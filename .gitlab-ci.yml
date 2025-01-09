@@ -46,32 +46,27 @@ test:
     # Test ve rapor oluşturma
     mvn clean test allure:report || {
       echo "❌ Test or report generation failed"
-      exit 0  # Artifact'ların yüklenebilmesi için 0 döndürüyoruz
+      mkdir -p target/allure-results target/allure-report target/test-logs
+      touch target/allure-results/.gitkeep
+      touch target/allure-report/.gitkeep
+      touch target/test-logs/.gitkeep
+      exit 0
     }
-    
-    # Artifact dizinlerini hazırla
-    mkdir -p ./artifacts/allure-results
-    mkdir -p ./artifacts/allure-report
-    mkdir -p ./artifacts/test-logs
-    
-    # Dosyaları kopyala
-    cp -r target/allure-results/* ./artifacts/allure-results/ || true
-    cp -r target/allure-report/* ./artifacts/allure-report/ || true
-    cp -r target/test-logs/* ./artifacts/test-logs/ || true
   artifacts:
     when: always
     reports:
       junit: target/surefire-reports/TEST-*.xml
     paths:
-      - ./artifacts/allure-results
-      - ./artifacts/allure-report
-      - ./artifacts/test-logs
+      - target/allure-results/
+      - target/allure-report/
+      - target/test-logs/
+      - target/surefire-reports/
     expire_in: 1 week
   retry: 2
   rules:
     - if: $CI_COMMIT_BRANCH
       when: always
-  allow_failure: true  # Pipeline'ın devam edebilmesi için
+  allow_failure: true
 
 pages:
   stage: deploy
@@ -79,16 +74,26 @@ pages:
     - test
   script: |
     mkdir -p public
-    if [ -d "./artifacts/allure-report" ]; then
-      cp -r ./artifacts/allure-report/* public/
+    if [ -d "target/allure-report" ] && [ -n "$(ls -A target/allure-report/)" ]; then
+      cp -r target/allure-report/* public/
     else
-      echo "No Allure report found" > public/index.html
+      echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html
     fi
+    
+    # Her durumda summary.txt oluştur
     echo "Test Summary:" > public/summary.txt
-    echo "Build $CI_BUILD_ID" >> public/summary.txt
-    echo "Branch $CI_COMMIT_REF_NAME" >> public/summary.txt
-    echo "Commit $CI_COMMIT_SHA" >> public/summary.txt
-    echo "Date $(date)" >> public/summary.txt
+    echo "Build: $CI_BUILD_ID" >> public/summary.txt
+    echo "Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
+    echo "Commit: $CI_COMMIT_SHA" >> public/summary.txt
+    echo "Date: $(date)" >> public/summary.txt
+    
+    # Test sonuçlarını da ekle
+    if [ -f "target/surefire-reports/TEST-*.xml" ]; then
+      echo "Test Results:" >> public/summary.txt
+      cat target/surefire-reports/TEST-*.xml | grep -E "tests|failures|errors" >> public/summary.txt
+    else
+      echo "No test results available" >> public/summary.txt
+    fi
   artifacts:
     paths:
       - public
