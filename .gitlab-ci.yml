@@ -36,27 +36,45 @@ test:
     echo "ChromeDriver version: $(chromedriver --version)"
     export CHROME_BIN=/usr/bin/google-chrome
   script: |
+    set -e  # Herhangi bir hata olursa script'i durdur
     echo "🚀 Starting test execution..."
     java -version
     mvn -version
     echo "Configuring Chrome options..."
     export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-    mvn clean test
-    mvn allure:report
+    
+    # Test çalıştırma ve sonuçları kontrol etme
+    if ! mvn clean test; then
+      echo "❌ Tests failed"
+      exit 1
+    fi
+    
+    # Allure raporu oluşturma
+    if ! mvn allure:report; then
+      echo "❌ Allure report generation failed"
+      exit 1
+    fi
+    
+    # Artifact dizinlerini kontrol et
+    if [ ! -d "target/allure-results" ] || [ ! -d "target/allure-report" ]; then
+      echo "❌ Required directories not found"
+      exit 1
+    fi
   artifacts:
-    when: always
+    when: always  # Test başarısız olsa bile artifact'ları topla
     reports:
-      junit:
+      junit: 
         - target/surefire-reports/TEST-*.xml
     paths:
-      - target/allure-results/
-      - target/allure-report/
-      - target/test-logs/
+      - target/allure-results/**/*  # Wildcard kullanımı düzeltildi
+      - target/allure-report/**/*   # Wildcard kullanımı düzeltildi
+      - target/test-logs/**/*       # Wildcard kullanımı düzeltildi
     expire_in: 1 week
   retry: 2
   rules:
     - if: $CI_COMMIT_BRANCH
       when: always
+  allow_failure: false  # Job başarısız olursa pipeline'ı durdur
 
 pages:
   stage: deploy
