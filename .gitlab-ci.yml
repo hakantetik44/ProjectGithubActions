@@ -1,121 +1,107 @@
 variables:
- MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
- CHROME_OPTIONS: "--no-sandbox --headless --disable-dev-shm-usage"
- DOCKER_TLS_CERTDIR: "/certs"
- FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
- ARTIFACT_COMPRESSION_LEVEL: "fastest"
- TRANSFER_METER_FREQUENCY: "2s"
- GIT_STRATEGY: clone
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+  TRANSFER_METER_FREQUENCY: "2s"
+  GIT_STRATEGY: clone
 
 image: maven:3.9.6-eclipse-temurin-17
 
 services:
- - name: docker:dind
-   command: ["--tls=false"]
+  - name: selenium/standalone-chrome:latest
+    alias: selenium-chrome
 
 cache:
- paths:
-   - .m2/repository
-   - .cache/selenium
- key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository
+  key: "$CI_COMMIT_REF_SLUG"
 
 workflow:
- rules:
-   - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
-     when: never
-   - when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
+      when: never
+    - when: always
 
 stages:
- - test
- - build
- - deploy
+  - test
+  - build
+  - deploy
 
 test:
- stage: test
- before_script:
-   - 'apt-get update && apt-get install -y wget unzip curl gnupg2'
-   - 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'
-   - 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-   - 'apt-get update && apt-get install -y google-chrome-stable unzip'
-   - |
-     CHROMEDRIVER_VERSION="114.0.5735.90"
-     wget -q -O chromedriver.zip "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-     unzip chromedriver.zip
-     chmod +x chromedriver
-     mv chromedriver /usr/local/bin/
-   - 'echo "Chrome version: $(google-chrome --version)"'
-   - 'echo "ChromeDriver version: $(chromedriver --version)"'
-   
- script:
-   - 'mvn clean test allure:report'
-   - |
-     if [ -d "target" ]; then
-       echo "📁 Target dizini kontrol ediliyor..."
-       ls -la target/
-     fi
+  stage: test
+  script:
+    - echo "🚀 Tests başlatılıyor..."
+    - java -version
+    - mvn -version
+    - mvn clean test allure:report
+    - |
+      if [ -d "target" ]; then
+        echo "📁 Target dizini kontrol ediliyor..."
+        ls -la target/
+      fi
 
- artifacts:
-   when: always
-   reports:
-     junit: 
-       - target/surefire-reports/TEST-*.xml
-   paths:
-     - target/
-   expire_in: 1 week
+  artifacts:
+    when: always
+    reports:
+      junit: 
+        - target/surefire-reports/TEST-*.xml
+    paths:
+      - target/
+    expire_in: 1 week
 
- rules:
-   - if: $CI_COMMIT_BRANCH
-     when: always
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: always
 
 build:
- stage: build
- script:
-   - 'echo "Building project..."'
-   - 'mvn package'
- artifacts:
-   paths:
-     - target/*.jar
-   expire_in: 1 week
- only:
-   - main
+  stage: build
+  script:
+    - echo "Building project..."
+    - mvn package
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
+  only:
+    - main
 
 pages:
- stage: deploy
- dependencies:
-   - test
- script:
-   - mkdir -p public
-   - |
-     if [ -d "target/allure-report" ]; then
-       cp -r target/allure-report/* public/
-     else
-       echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html
-     fi
-   - |
-     {
-       echo "Test Özeti"
-       echo "==========="
-       echo "Build: $CI_BUILD_ID"
-       echo "Branch: $CI_COMMIT_REF_NAME"
-       echo "Commit: $CI_COMMIT_SHA"
-       echo "Tarih: $(date)"
-       echo
-       echo "Test Sonuçları"
-       echo "=============="
-       
-       if [ -d "target/surefire-reports" ]; then
-         TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-         FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-         echo "Toplam Test: $TOTAL"
-         echo "Başarısız: $FAILED"
-       else
-         echo "Test sonuçları bulunamadı"
-       fi
-     } > public/summary.txt
+  stage: deploy
+  dependencies:
+    - test
+  script:
+    - mkdir -p public
+    - |
+      if [ -d "target/allure-report" ]; then
+        cp -r target/allure-report/* public/
+      else
+        echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
+      fi
+    - |
+      {
+        echo "Test Özeti"
+        echo "==========="
+        echo "Build: $CI_BUILD_ID"
+        echo "Branch: $CI_COMMIT_REF_NAME"
+        echo "Commit: $CI_COMMIT_SHA"
+        echo "Tarih: $(date)"
+        echo
+        echo "Test Sonuçları"
+        echo "=============="
+        
+        if [ -d "target/surefire-reports" ]; then
+          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          echo "Toplam Test: $TOTAL"
+          echo "Başarısız: $FAILED"
+        else
+          echo "Test sonuçları bulunamadı"
+        fi
+      } > public/summary.txt
 
- artifacts:
-   paths:
-     - public
-   expire_in: 30 days
- only:
-   - main
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - main
