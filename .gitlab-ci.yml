@@ -3,7 +3,6 @@ variables:
   CHROME_OPTIONS: "--no-sandbox --headless --disable-dev-shm-usage"
   DOCKER_TLS_CERTDIR: "/certs"
   CHROMEDRIVER_VERSION: "114.0.5735.90"
-  # GitLab Runner ayarları
   FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
   ARTIFACT_COMPRESSION_LEVEL: "fastest"
   TRANSFER_METER_FREQUENCY: "2s"
@@ -94,7 +93,11 @@ pages:
     - test
   script: |
     mkdir -p public
-    tar xzf artifacts.tar.gz
+    if [ -f artifacts.tar.gz ]; then
+      tar xzf artifacts.tar.gz
+    else
+      echo "<html><body><h1>No Artifacts Available</h1></body></html>" > public/index.html
+    fi
     
     if [ -d "allure-report" ] && [ "$(ls -A allure-report/)" ]; then
       cp -r allure-report/* public/
