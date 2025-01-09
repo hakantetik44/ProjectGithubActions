@@ -1,0 +1,16 @@
+src
+├── test
+│   ├── java
+│   │   └── com
+│   │       └── amazon
+│   │           ├── pages
+│   │           │   ├── HomePage.java
+│   │           │   └── SearchResultPage.java
+│   │           ├── steps
+│   │           │   ├── Hooks.java
+│   │           │   └── SearchSteps.java
+│   │           └── runners
+│   │               └── TestRunner.java
+│   └── resources
+│       └── features
+│           └── amazon_search.feature 

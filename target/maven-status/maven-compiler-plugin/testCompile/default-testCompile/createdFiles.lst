@@ -1,0 +1,5 @@
+com/amazon/steps/SearchSteps.class
+com/amazon/runners/TestRunner.class
+com/amazon/pages/HomePage.class
+com/amazon/pages/SearchResultPage.class
+com/amazon/steps/Hooks.class
