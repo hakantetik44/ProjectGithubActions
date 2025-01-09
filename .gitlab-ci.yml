@@ -22,27 +22,27 @@ stages:
 
 test:
   stage: test
-  before_script:
-    - apt-get update && apt-get install -y wget unzip curl gnupg2
-    - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-    - apt-get update && apt-get install -y google-chrome-stable
-    - mkdir -p .cache/selenium
-    - wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
-    - unzip -q /tmp/chromedriver.zip -d /tmp
-    - mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
-    - chmod +x /usr/local/bin/chromedriver
-    - echo "Chrome version: $(google-chrome --version)"
-    - echo "ChromeDriver version: $(chromedriver --version)"
-    - export CHROME_BIN=/usr/bin/google-chrome
-  script:
-    - echo "🚀 Starting test execution..."
-    - java -version
-    - mvn -version
-    - echo "Configuring Chrome options..."
-    - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-    - mvn clean test
-    - mvn allure:report
+  before_script: |
+    apt-get update && apt-get install -y wget unzip curl gnupg2
+    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+    apt-get update && apt-get install -y google-chrome-stable
+    mkdir -p .cache/selenium
+    wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
+    unzip -q /tmp/chromedriver.zip -d /tmp
+    mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+    chmod +x /usr/local/bin/chromedriver
+    echo "Chrome version: $(google-chrome --version)"
+    echo "ChromeDriver version: $(chromedriver --version)"
+    export CHROME_BIN=/usr/bin/google-chrome
+  script: |
+    echo "🚀 Starting test execution..."
+    java -version
+    mvn -version
+    echo "Configuring Chrome options..."
+    export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
+    mvn clean test
+    mvn allure:report
   artifacts:
     when: always
     reports:
@@ -62,14 +62,14 @@ pages:
   stage: deploy
   dependencies:
     - test
-  script:
-    - mkdir -p public
-    - cp -r target/allure-report/* public
-    - echo "Test Summary:" > public/summary.txt
-    - echo "Build $CI_BUILD_ID" >> public/summary.txt
-    - echo "Branch $CI_COMMIT_REF_NAME" >> public/summary.txt
-    - echo "Commit $CI_COMMIT_SHA" >> public/summary.txt
-    - echo "Date $(date)" >> public/summary.txt
+  script: |
+    mkdir -p public
+    cp -r target/allure-report/* public
+    echo "Test Summary:" > public/summary.txt
+    echo "Build $CI_BUILD_ID" >> public/summary.txt
+    echo "Branch $CI_COMMIT_REF_NAME" >> public/summary.txt
+    echo "Commit $CI_COMMIT_SHA" >> public/summary.txt
+    echo "Date $(date)" >> public/summary.txt
   artifacts:
     paths:
       - public
