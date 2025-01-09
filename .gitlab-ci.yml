@@ -4,6 +4,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   CHROME_OPTIONS: "--no-sandbox --headless --disable-dev-shm-usage"
   DOCKER_TLS_CERTDIR: "/certs"
+  CHROMEDRIVER_VERSION: "114.0.5735.90"
 
 services:
   - name: docker:dind
@@ -12,6 +13,7 @@ services:
 cache:
   paths:
     - .m2/repository
+    - .cache/selenium
   key: "$CI_COMMIT_REF_SLUG"
 
 stages:
@@ -21,26 +23,30 @@ stages:
 test:
   stage: test
   before_script:
-    - apt-get update && apt-get install -y wget gnupg
-    # Chrome kurulumu
+    - apt-get update && apt-get install -y wget unzip curl gnupg2
+    
     - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-    - echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
     - apt-get update && apt-get install -y google-chrome-stable
-    - google-chrome --version
-    # ChromeDriver kurulumu
-    - CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1)
-    - wget -q "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}"
-    - wget -q "https://chromedriver.storage.googleapis.com/$(cat LATEST_RELEASE_${CHROME_VERSION})/chromedriver_linux64.zip"
-    - unzip chromedriver_linux64.zip
-    - mv chromedriver /usr/local/bin/
+    
+    - mkdir -p .cache/selenium
+    - wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
+    - unzip -q /tmp/chromedriver.zip -d /tmp
+    - mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+    - chmod +x /usr/local/bin/chromedriver
+    
+    - echo "Chrome version: $(google-chrome --version)"
+    - echo "ChromeDriver version: $(chromedriver --version)"
+    
     - export CHROME_BIN=/usr/bin/google-chrome
+    
   script:
     - echo "🚀 Starting test execution..."
     - java -version
     - mvn -version
     - |
       echo "Configuring Chrome options..."
-      export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu"
+      export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
     - mvn clean test
     - mvn allure:report
   artifacts:
@@ -49,10 +55,11 @@ test:
       junit:
         - target/surefire-reports/TEST-*.xml
     paths:
-      - target/allure-results
-      - target/allure-report
-      - target/test-logs
+      - target/allure-results/
+      - target/allure-report/
+      - target/test-logs/
     expire_in: 1 week
+  retry: 2
   rules:
     - if: $CI_COMMIT_BRANCH
       when: always
