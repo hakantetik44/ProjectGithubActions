@@ -27,25 +27,25 @@ stages:
 test:
   stage: test
   before_script:
-  - apt-get update && apt-get install -y wget unzip curl gnupg2
-  - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-  - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-  - apt-get update && apt-get install -y google-chrome-stable
-  - mkdir -p .cache/selenium
-  - wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
-  - unzip -q /tmp/chromedriver.zip -d /tmp
-  - mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
-  - chmod +x /usr/local/bin/chromedriver
-  - echo "Chrome version: $(google-chrome --version)"
-  - echo "ChromeDriver version: $(chromedriver --version)"
-  - export CHROME_BIN=/usr/bin/google-chrome
+    - apt-get update && apt-get install -y wget unzip curl gnupg2
+    - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+    - apt-get update && apt-get install -y google-chrome-stable
+    - mkdir -p .cache/selenium
+    - wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
+    - unzip -q /tmp/chromedriver.zip -d /tmp
+    - mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+    - chmod +x /usr/local/bin/chromedriver
+    - echo "Chrome version: $(google-chrome --version)"
+    - echo "ChromeDriver version: $(chromedriver --version)"
+    - export CHROME_BIN=/usr/bin/google-chrome
 
   script:
     - echo "🚀 Test hazırlığı başlıyor..."
     - java -version
     - mvn -version
     - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-
+    
     # Maven testlerini çalıştır
     - |
       echo "Maven testleri başlıyor..."
@@ -56,25 +56,25 @@ test:
         touch target/allure-report/.gitkeep
         touch target/surefire-reports/.gitkeep
       }
-
+    
     # Test sonuçlarını kontrol et
     - |
       if [ -d "target" ]; then
         echo "📁 Target dizini içeriği:"
         ls -la target/
-      
+        
         # Test raporlarını kopyala
         if [ -d "target/surefire-reports" ]; then
           echo "📋 Test raporları bulundu"
           cp -r target/surefire-reports .
         fi
-      
+        
         # Allure raporlarını kopyala
         if [ -d "target/allure-results" ]; then
           echo "📊 Allure raporları bulundu"
           cp -r target/allure-results .
         fi
-      
+        
         # Artifactları hazırla
         echo "🗜️ Artifactlar hazırlanıyor..."
         tar czf artifacts.tar.gz target/ || echo "⚠️ Tar işlemi başarısız"
@@ -124,7 +124,7 @@ pages:
     - test
   script:
     - mkdir -p public
-
+    
     # Test raporlarını yerleştir
     - |
       if [ -f artifacts.tar.gz ]; then
@@ -134,7 +134,7 @@ pages:
         echo "⚠️ Artifacts bulunamadı"
         echo "<html><body><h1>Test Sonuçları Mevcut Değil</h1></body></html>" > public/index.html
       fi
-
+    
     # Allure raporlarını kopyala
     - |
       if [ -d "target/allure-report" ]; then
@@ -144,7 +144,7 @@ pages:
         echo "⚠️ Allure raporu bulunamadı"
         echo "<html><body><h1>Test Raporu Mevcut Değil</h1></body></html>" > public/index.html
       fi
-
+    
     # Özet rapor oluştur
     - |
       {
@@ -157,7 +157,7 @@ pages:
         echo
         echo "Test Sonuçları"
         echo "=============="
-      
+        
         if [ -d "target/surefire-reports" ]; then
           TOTAL_TESTS=$(grep -h "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null | wc -l)
           FAILED_TESTS=$(grep -h "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null | wc -l)
@@ -172,6 +172,6 @@ pages:
     paths:
       - public
     expire_in: 30 days
-
+    
   only:
     - main
