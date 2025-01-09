@@ -1,38 +1,28 @@
-# 🔧 Base image with Maven and Chrome
+# 🔧 Base image
 image: markhobson/maven-chrome:jdk-11
 
-# 🌍 Global variables
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   CHROME_OPTIONS: "--no-sandbox --headless --disable-dev-shm-usage"
 
-# 📦 Cache Maven dependencies
 cache:
   paths:
     - .m2/repository
   key: "$CI_COMMIT_REF_SLUG"
 
-# 📋 Pipeline stages
 stages:
   - test
   - deploy
 
-# 🧪 Test stage
 test:
   stage: test
   tags:
     - docker
-  before_script:
-    - echo "🚀 Starting test execution..."
+  script:
     - java -version
     - mvn -version
-  script:
-    - echo "📝 Running tests..."
     - mvn clean test
-    - echo "📊 Generating Allure report..."
     - mvn allure:report
-  after_script:
-    - echo "✨ Test execution completed"
   artifacts:
     when: always
     reports:
@@ -49,24 +39,20 @@ test:
       when: always
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       when: always
-  
-# 📱 Pages deployment
+
 pages:
   stage: deploy
   dependencies:
     - test
-  before_script:
-    - echo "🌐 Preparing to deploy Allure report to Pages..."
   script:
     - mkdir -p public
     - cp -r target/allure-report/* public
-    - echo "📋 Test Execution Summary:" > public/summary.txt
-    - echo "- Build: $CI_BUILD_ID" >> public/summary.txt
-    - echo "- Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
-    - echo "- Commit: $CI_COMMIT_SHA" >> public/summary.txt
-    - echo "- Date: $(date)" >> public/summary.txt
-  after_script:
-    - echo "✅ Pages deployment completed"
+    - |
+      echo "Test Summary:" > public/summary.txt
+      echo "Build: $CI_BUILD_ID" >> public/summary.txt
+      echo "Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
+      echo "Commit: $CI_COMMIT_SHA" >> public/summary.txt
+      echo "Date: $(date)" >> public/summary.txt
   artifacts:
     paths:
       - public
@@ -74,27 +60,8 @@ pages:
   only:
     - main
 
-# 📋 Job templates
-.test_template: &test_template
-  retry: 2
-  interruptible: true
-  timeout: 1 hour
-
-# 🎯 Workflow rules
 workflow:
   rules:
     - if: $CI_COMMIT_BRANCH
       when: always
     - when: never
-
-# 📊 Custom metrics (example)
-custom_metrics:
-  script:
-    - |
-      # Test execution time
-      echo "test_execution_duration_seconds $(cat target/test-logs/test.log | grep 'Total time' | awk '{print $4}')" > metrics.txt
-      # Test success rate
-      echo "test_success_rate $(cat target/test-logs/test.log | grep 'Tests run' | awk '{print $7/$5*100}')" >> metrics.txt
-  artifacts:
-    reports:
-      metrics: metrics.txt 
