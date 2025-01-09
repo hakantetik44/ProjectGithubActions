@@ -52,16 +52,14 @@ test:
     - java -version
     - mvn -version
     - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-    - |
-      mvn clean test allure:report || {
+    - mvn clean test allure:report || {
         echo "⚠️ Test veya rapor oluşturmada hata"
         mkdir -p target/allure-results target/allure-report target/surefire-reports
         touch target/allure-results/.gitkeep
         touch target/allure-report/.gitkeep
         touch target/surefire-reports/.gitkeep
       }
-    - |
-      if [ -d "target" ]; then
+    - if [ -d "target" ]; then
         echo "📁 Target dizini içeriği:"
         ls -la target/
         if [ -d "target/surefire-reports" ]; then
@@ -127,33 +125,30 @@ pages:
     - test
   script:
     - mkdir -p public
-    - |
-      if [ -f artifacts.tar.gz ]; then
+    - if [ -f artifacts.tar.gz ]; then
         echo "📦 Artifactlar çıkartılıyor..."
         tar xzf artifacts.tar.gz
       else
         echo "⚠️ Artifacts bulunamadı"
         echo "<html><body><h1>Test Sonuçları Mevcut Değil</h1></body></html>" > public/index.html
       fi
-    - |
-      if [ -d "target/allure-report" ]; then
+    - if [ -d "target/allure-report" ]; then
         echo "📊 Allure raporları kopyalanıyor..."
         cp -r target/allure-report/* public/
       else
         echo "⚠️ Allure raporu bulunamadı"
         echo "<html><body><h1>Test Raporu Mevcut Değil</h1></body></html>" > public/index.html
       fi
-    - |
-      echo "Test Özeti" > public/summary.txt
-      echo "===========" >> public/summary.txt
-      echo "Build: $CI_BUILD_ID" >> public/summary.txt
-      echo "Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
-      echo "Commit: $CI_COMMIT_SHA" >> public/summary.txt
-      echo "Tarih: $(date)" >> public/summary.txt
-      echo >> public/summary.txt
-      echo "Test Sonuçları" >> public/summary.txt
-      echo "==============" >> public/summary.txt
-      if [ -d "target/surefire-reports" ]; then
+    - echo "Test Özeti" > public/summary.txt
+    - echo "===========" >> public/summary.txt
+    - echo "Build: $CI_BUILD_ID" >> public/summary.txt
+    - echo "Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
+    - echo "Commit: $CI_COMMIT_SHA" >> public/summary.txt
+    - echo "Tarih: $(date)" >> public/summary.txt
+    - echo >> public/summary.txt
+    - echo "Test Sonuçları" >> public/summary.txt
+    - echo "==============" >> public/summary.txt
+    - if [ -d "target/surefire-reports" ]; then
         TOTAL_TESTS=$(grep -h "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null | wc -l)
         FAILED_TESTS=$(grep -h "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null | wc -l)
         echo "Toplam Test: $TOTAL_TESTS" >> public/summary.txt
