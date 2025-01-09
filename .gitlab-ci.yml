@@ -19,11 +19,16 @@ stages:
 
 test:
   stage: test
-  tags:
-    - shared
   before_script:
-    - apt-get update && apt-get install -y chromium chromium-driver
-    - export CHROME_BIN=/usr/bin/chromium
+    # MacOS için Chrome kurulumu
+    - |
+      if [ "$(uname)" == "Darwin" ]; then
+        brew install --cask chromium
+        export CHROME_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
+      else
+        apt-get update && apt-get install -y chromium chromium-driver
+        export CHROME_BIN=/usr/bin/chromium
+      fi
   script:
     - echo "🚀 Starting test execution..."
     - java -version
@@ -49,8 +54,6 @@ test:
 
 pages:
   stage: deploy
-  tags:
-    - shared
   dependencies:
     - test
   script:
