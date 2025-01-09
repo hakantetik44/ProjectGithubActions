@@ -151,7 +151,7 @@ pages:
         echo "<html><body><h1>Test Raporu Mevcut Değil</h1></body></html>" > public/index.html
       fi
     
-    # Özet rapor oluştur
+  # Özet rapor oluştur
     - |
       {
         echo "Test Özeti"
@@ -178,6 +178,6 @@ pages:
     paths:
       - public
     expire_in: 30 days
-    
+
   only:
     - main
