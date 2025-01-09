@@ -2,7 +2,9 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   CHROME_OPTIONS: "--no-sandbox --headless --disable-dev-shm-usage"
   DOCKER_TLS_CERTDIR: "/certs"
-  CHROMEDRIVER_VERSION: "114.0.5735.90"
+  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+  TRANSFER_METER_FREQUENCY: "2s"
   GIT_STRATEGY: clone
 
 image: maven:3.9.6-eclipse-temurin-17
@@ -12,10 +14,16 @@ services:
     command: ["--tls=false"]
 
 cache:
-  key: "$CI_COMMIT_REF_SLUG"
   paths:
     - .m2/repository
     - .cache/selenium
+  key: "$CI_COMMIT_REF_SLUG"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
+      when: never
+    - when: always
 
 stages:
   - test
@@ -25,63 +33,73 @@ stages:
 test:
   stage: test
   before_script:
-    - apt-get update
-    - apt-get install -y wget unzip curl gnupg2
-    - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list
-    - apt-get update
-    - apt-get install -y google-chrome-stable
-    - mkdir -p .cache/selenium
-    - wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip"
-    - unzip -q /tmp/chromedriver.zip -d /tmp
-    - mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
-    - chmod +x /usr/local/bin/chromedriver
-    - export CHROME_BIN=/usr/bin/google-chrome
-    - echo "Chrome version: $(google-chrome --version)"
-    - echo "ChromeDriver version: $(chromedriver --version)"
+    - 'apt-get update && apt-get install -y wget unzip curl gnupg2'
+    - 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'
+    - 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+    - 'apt-get update && apt-get install -y google-chrome-stable'
+    - |
+      wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
+      unzip -q /tmp/chromedriver.zip -d /tmp
+      mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+      chmod +x /usr/local/bin/chromedriver
+    - 'echo "Chrome version: $(google-chrome --version)"'
+    - 'echo "ChromeDriver version: $(chromedriver --version)"'
+    - 'export CHROME_BIN=/usr/bin/google-chrome'
+
   script:
-    - echo "🚀 Starting test execution..."
-    - java -version
-    - mvn -version
-    - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
+    - 'echo "🚀 Tests başlatılıyor..."'
+    - 'java -version'
+    - 'mvn -version'
+    - 'export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"'
     - |
-      mvn clean test allure:report || {
-        echo "⚠️ Test or report generation failed";
-        mkdir -p target/allure-results target/allure-report target/surefire-reports;
-      }
-    - |
-      if [ -d "target" ]; then
-        echo "📁 Target directory contents:";
-        ls -la target/
-        tar czf artifacts.tar.gz target/ || echo "⚠️ Tar command failed"
-      else
-        echo "⚠️ Target directory not found. Creating a dummy structure.";
-        mkdir -p target/surefire-reports
-        touch target/surefire-reports/.gitkeep
-        tar czf artifacts.tar.gz target/
+      # Maven testlerini çalıştır
+      mvn clean test allure:report
+      TEST_EXIT_CODE=$?
+      
+      # Dizinleri oluştur
+      mkdir -p target/allure-results target/allure-report target/surefire-reports surefire-reports allure-results
+      
+      # Test raporlarını kopyala
+      if [ -d "target/surefire-reports" ]; then
+        cp -r target/surefire-reports/* surefire-reports/
       fi
+      
+      if [ -d "target/allure-results" ]; then
+        cp -r target/allure-results/* allure-results/
+      fi
+      
+      # Artifact oluştur
+      tar czf artifacts.tar.gz ./target/
+      
+      exit $TEST_EXIT_CODE
+
   artifacts:
+    name: "${CI_JOB_NAME}_${CI_COMMIT_REF_NAME}"
     when: always
     reports:
       junit:
         - target/surefire-reports/TEST-*.xml
     paths:
       - artifacts.tar.gz
-      - target/
-      - target/surefire-reports/
-      - target/allure-results/
-      - target/allure-report/
+      - surefire-reports/
+      - allure-results/
     expire_in: 1 week
+
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: always
 
 build:
   stage: build
   script:
-    - echo "Building project..."
-    - mvn package
+    - 'echo "Building project..."'
+    - 'mvn package'
   artifacts:
     paths:
       - target/*.jar
     expire_in: 1 week
+  only:
+    - main
 
 pages:
   stage: deploy
@@ -90,36 +108,36 @@ pages:
   script:
     - mkdir -p public
     - |
-      if [ -f artifacts.tar.gz ]; then
-        echo "📦 Extracting artifacts...";
-        tar xzf artifacts.tar.gz || echo "⚠️ Tar extraction failed";
-      else
-        echo "⚠️ Artifacts not found. Creating a fallback HTML file.";
-        echo "<html><body><h1>Test Results Not Available</h1></body></html>" > public/index.html
-      fi
-    - |
       if [ -d "target/allure-report" ]; then
-        echo "📊 Copying Allure reports...";
-        cp -r target/allure-report/* public/;
+        cp -r target/allure-report/* public/
       else
-        echo "⚠️ Allure report not found. Creating a fallback HTML file.";
-        echo "<html><body><h1>Allure Report Not Found</h1></body></html>" > public/index.html
+        echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html
       fi
     - |
-      echo "Test Summary" > public/summary.txt
-      echo "=============" >> public/summary.txt
-      echo "Build: $CI_BUILD_ID" >> public/summary.txt
-      echo "Branch: $CI_COMMIT_REF_NAME" >> public/summary.txt
-      echo "Commit: $CI_COMMIT_SHA" >> public/summary.txt
-      echo "Date: $(date)" >> public/summary.txt
-      if [ -d "target/surefire-reports" ]; then
-        TOTAL_TESTS=$(grep -h "<testcase" target/surefire-reports/TEST-*.xml | wc -l)
-        FAILED_TESTS=$(grep -h "<failure" target/surefire-reports/TEST-*.xml | wc -l)
-        echo "Total Tests: $TOTAL_TESTS" >> public/summary.txt
-        echo "Failed Tests: $FAILED_TESTS" >> public/summary.txt
-      else
-        echo "No test results found" >> public/summary.txt
+      {
+        echo "Test Özeti"
+        echo "==========="
+        echo "Build: $CI_BUILD_ID"
+        echo "Branch: $CI_COMMIT_REF_NAME"
+        echo "Commit: $CI_COMMIT_SHA"
+        echo "Tarih: $(date)"
+        echo
+        echo "Test Sonuçları"
+        echo "=============="
+      
+        if [ -d "target/surefire-reports" ]; then
+          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          echo "Toplam Test: $TOTAL"
+          echo "Başarısız: $FAILED"
+        else
+          echo "Test sonuçları bulunamadı"
+        fi
+      } > public/summary.txt
+
   artifacts:
     paths:
       - public
     expire_in: 30 days
+  only:
+    - main
