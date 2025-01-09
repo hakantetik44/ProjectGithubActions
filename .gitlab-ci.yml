@@ -14,10 +14,10 @@ services:
     command: ["--tls=false"]
 
 cache:
-  key: "$CI_COMMIT_REF_SLUG"
   paths:
     - .m2/repository
     - .cache/selenium
+  key: "$CI_COMMIT_REF_SLUG"
 
 workflow:
   rules:
@@ -33,30 +33,39 @@ stages:
 test:
   stage: test
   before_script:
-    - apt-get update && apt-get install -y wget unzip curl gnupg2
-    - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-    - apt-get update && apt-get install -y google-chrome-stable
-    - mkdir -p .cache/selenium
-    - cd .cache/selenium
-    - wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
-    - unzip -q chromedriver-linux64.zip
-    - chmod +x chromedriver-linux64/chromedriver
-    - mv chromedriver-linux64/chromedriver /usr/local/bin/
-    - cd ../../
-    - export CHROME_BIN=/usr/bin/google-chrome
-    - export CHROME_PATH=/usr/local/bin/chromedriver
-    - echo "Chrome version: $(google-chrome --version)"
-    - echo "ChromeDriver version: $(chromedriver --version)"
+    - 'apt-get update && apt-get install -y wget unzip curl gnupg2'
+    - 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'
+    - 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+    - 'apt-get update && apt-get install -y google-chrome-stable'
+    - |
+      wget -q -O /tmp/chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/114.0.5735.90/linux64/chromedriver-linux64.zip"
+      unzip -q /tmp/chromedriver.zip -d /tmp
+      mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+      chmod +x /usr/local/bin/chromedriver
+    - 'echo "Chrome version: $(google-chrome --version)"'
+    - 'echo "ChromeDriver version: $(chromedriver --version)"'
+    - 'export CHROME_BIN=/usr/bin/google-chrome'
 
   script:
-    - echo "🚀 Starting tests..."
-    - java -version
-    - mvn -version
-    - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-    - mkdir -p target/allure-results target/allure-report target/surefire-reports
-    - mvn clean test allure:report || echo "⚠️ Test or report generation failed"
-    - if [ -d "target" ]; then tar czf artifacts.tar.gz target/; fi
+    - 'echo "🚀 Tests başlatılıyor..."'
+    - 'java -version'
+    - 'mvn -version'
+    - 'export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"'
+    - |
+      # Maven testlerini çalıştır
+      mvn clean test allure:report
+      
+      # Dizinleri oluştur ve raporları kopyala
+      if [ -d "target" ]; then
+        find target -type f -name "*.xml" -o -name "*.html" -o -name "*.json" -o -name "*.png" | while read file; do
+          mkdir -p $(dirname "${file#target/}")
+          cp "$file" "${file#target/}"
+        done
+        tar -czf artifacts.tar.gz -C target .
+      else
+        echo "Target dizini bulunamadı"
+        exit 1
+      fi
 
   artifacts:
     when: always
@@ -65,21 +74,23 @@ test:
         - target/surefire-reports/TEST-*.xml
     paths:
       - target/
-      - artifacts.tar.gz
     expire_in: 1 week
+
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: always
 
 build:
   stage: build
   script:
-    - echo "Building project..."
-    - mvn package
+    - 'echo "Building project..."'
+    - 'mvn package'
   artifacts:
     paths:
       - target/*.jar
     expire_in: 1 week
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: always
+  only:
+    - main
 
 pages:
   stage: deploy
@@ -87,26 +98,31 @@ pages:
     - test
   script:
     - mkdir -p public
-    - if [ -d "target/allure-report" ]; then cp -r target/allure-report/* public/; else echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html; fi
+    - |
+      if [ -d "target/allure-report" ]; then
+        cp -r target/allure-report/* public/
+      else
+        echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html
+      fi
     - |
       {
-        echo "Test Summary"
-        echo "============"
+        echo "Test Özeti"
+        echo "==========="
         echo "Build: $CI_BUILD_ID"
         echo "Branch: $CI_COMMIT_REF_NAME"
         echo "Commit: $CI_COMMIT_SHA"
-        echo "Date: $(date)"
+        echo "Tarih: $(date)"
         echo
-        echo "Test Results"
-        echo "============"
+        echo "Test Sonuçları"
+        echo "=============="
       
         if [ -d "target/surefire-reports" ]; then
-          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml || echo "0")
-          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml || echo "0")
-          echo "Total Tests: $TOTAL"
-          echo "Failed: $FAILED"
+          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+          echo "Toplam Test: $TOTAL"
+          echo "Başarısız: $FAILED"
         else
-          echo "No test results found"
+          echo "Test sonuçları bulunamadı"
         fi
       } > public/summary.txt
 
