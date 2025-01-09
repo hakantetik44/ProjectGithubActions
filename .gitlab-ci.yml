@@ -14,10 +14,10 @@ services:
     command: ["--tls=false"]
 
 cache:
+  key: "$CI_COMMIT_REF_SLUG"
   paths:
     - .m2/repository
     - .cache/selenium
-  key: "$CI_COMMIT_REF_SLUG"
 
 workflow:
   rules:
@@ -44,22 +44,20 @@ test:
     - chmod +x chromedriver-linux64/chromedriver
     - mv chromedriver-linux64/chromedriver /usr/local/bin/
     - cd ../../
-    - echo "Chrome version: $(google-chrome --version)"
-    - echo "ChromeDriver version: $(chromedriver --version)"
     - export CHROME_BIN=/usr/bin/google-chrome
     - export CHROME_PATH=/usr/local/bin/chromedriver
+    - echo "Chrome version: $(google-chrome --version)"
+    - echo "ChromeDriver version: $(chromedriver --version)"
+
   script:
-    - echo "🚀 Tests başlatılıyor..."
+    - echo "🚀 Starting tests..."
     - java -version
     - mvn -version
     - export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --remote-debugging-port=9222"
-    - |
-      mkdir -p target/allure-results target/allure-report target/surefire-reports
-      mvn clean test allure:report || echo "⚠️ Test veya rapor oluşturma hatası"
-    - |
-      if [ -d "target" ]; then
-        tar czf artifacts.tar.gz -C target .
-      fi
+    - mkdir -p target/allure-results target/allure-report target/surefire-reports
+    - mvn clean test allure:report || echo "⚠️ Test or report generation failed"
+    - if [ -d "target" ]; then tar czf artifacts.tar.gz target/; fi
+
   artifacts:
     when: always
     reports:
@@ -69,9 +67,6 @@ test:
       - target/
       - artifacts.tar.gz
     expire_in: 1 week
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: always
 
 build:
   stage: build
@@ -82,8 +77,9 @@ build:
     paths:
       - target/*.jar
     expire_in: 1 week
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: always
 
 pages:
   stage: deploy
@@ -91,32 +87,29 @@ pages:
     - test
   script:
     - mkdir -p public
-    - |
-      if [ -d "target/allure-report" ]; then
-        cp -r target/allure-report/* public/
-      else
-        echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html
-      fi
+    - if [ -d "target/allure-report" ]; then cp -r target/allure-report/* public/; else echo "<html><body><h1>No Test Report Available</h1></body></html>" > public/index.html; fi
     - |
       {
-        echo "Test Özeti"
-        echo "==========="
+        echo "Test Summary"
+        echo "============"
         echo "Build: $CI_BUILD_ID"
         echo "Branch: $CI_COMMIT_REF_NAME"
         echo "Commit: $CI_COMMIT_SHA"
-        echo "Tarih: $(date)"
+        echo "Date: $(date)"
         echo
-        echo "Test Sonuçları"
-        echo "=============="
+        echo "Test Results"
+        echo "============"
+      
         if [ -d "target/surefire-reports" ]; then
-          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-          echo "Toplam Test: $TOTAL"
-          echo "Başarısız: $FAILED"
+          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml || echo "0")
+          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml || echo "0")
+          echo "Total Tests: $TOTAL"
+          echo "Failed: $FAILED"
         else
-          echo "Test sonuçları bulunamadı"
+          echo "No test results found"
         fi
       } > public/summary.txt
+
   artifacts:
     paths:
       - public
