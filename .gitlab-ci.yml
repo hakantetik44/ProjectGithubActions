@@ -33,7 +33,7 @@ test:
     - echo "🚀 Tests başlatılıyor..."
     - java -version
     - mvn -version
-    - mvn clean test allure:report
+    - mvn -X clean test allure:report
     - |
       if [ -d "target" ]; then
         echo "📁 Target dizini kontrol ediliyor..."
