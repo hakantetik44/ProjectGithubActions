@@ -1,4 +1,4 @@
-image: maven:17-jdk-eclipse-temurin
+image: maven:3.9.6-eclipse-temurin-17
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -6,7 +6,8 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
 
 services:
-  - docker:dind
+  - name: docker:dind
+    command: ["--tls=false"]
 
 cache:
   paths:
@@ -20,15 +21,19 @@ stages:
 test:
   stage: test
   before_script:
-    # MacOS için Chrome kurulumu
-    - |
-      if [ "$(uname)" == "Darwin" ]; then
-        brew install --cask chromium
-        export CHROME_BIN="/Applications/Chromium.app/Contents/MacOS/Chromium"
-      else
-        apt-get update && apt-get install -y chromium chromium-driver
-        export CHROME_BIN=/usr/bin/chromium
-      fi
+    - apt-get update && apt-get install -y wget gnupg
+    # Chrome kurulumu
+    - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+    - echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+    - apt-get update && apt-get install -y google-chrome-stable
+    - google-chrome --version
+    # ChromeDriver kurulumu
+    - CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1)
+    - wget -q "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}"
+    - wget -q "https://chromedriver.storage.googleapis.com/$(cat LATEST_RELEASE_${CHROME_VERSION})/chromedriver_linux64.zip"
+    - unzip chromedriver_linux64.zip
+    - mv chromedriver /usr/local/bin/
+    - export CHROME_BIN=/usr/bin/google-chrome
   script:
     - echo "🚀 Starting test execution..."
     - java -version
