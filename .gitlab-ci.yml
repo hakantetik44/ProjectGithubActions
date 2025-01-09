@@ -25,18 +25,6 @@ stages:
   - test
   - deploy
 
-.upload_artifacts: &upload_artifacts |
-  # Artifact'ları yükle
-  if [ -d "target" ]; then
-    cd target
-    tar czf ../artifacts.tar.gz *
-    cd ..
-    echo "Artifacts compressed successfully"
-  else
-    echo "No artifacts to upload"
-    touch artifacts.tar.gz
-  fi
-
 test:
   stage: test
   before_script: |
@@ -70,7 +58,13 @@ test:
     }
     
     # Artifact'ları hazırla
-    *upload_artifacts
+    if [ -d "target" ] && [ "$(ls -A target)" ]; then
+      tar czf artifacts.tar.gz -C target .
+      echo "Artifacts compressed successfully"
+    else
+      echo "No artifacts to upload"
+      touch artifacts.tar.gz
+    fi
   after_script:
     - echo "Cleaning up temporary files..."
     - find . -type f -name "*.tmp" -delete
