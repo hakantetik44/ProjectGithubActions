@@ -30,10 +30,11 @@ stages:
 test:
   stage: test
   script:
-    - echo "🚀 Tests başlatılıyor..."
-    - java -version
-    - mvn -version
-    - mvn -X clean test allure:report
+  - echo "🚀 Tests başlatılıyor..."
+  - java -version
+  - mvn -version
+  - mvn -X clean test allure:report
+  
     - |
       if [ -d "target" ]; then
         echo "📁 Target dizini kontrol ediliyor..."
