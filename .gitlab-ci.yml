@@ -1,5 +1,4 @@
-# 🔧 Base image
-image: markhobson/maven-chrome:jdk-11
+image: maven:17-eclipse-temurin
 
 variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
@@ -16,8 +15,10 @@ stages:
 
 test:
   stage: test
+  image: maven:17-eclipse-temurin
   tags:
     - docker
+    - shared
   script:
     - java -version
     - mvn -version
@@ -33,7 +34,6 @@ test:
       - target/allure-report
       - target/test-logs
     expire_in: 1 week
-  coverage: '/Code coverage: \d+\.\d+%/'
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: always
@@ -44,6 +44,9 @@ pages:
   stage: deploy
   dependencies:
     - test
+  tags:
+    - docker
+    - shared
   script:
     - mkdir -p public
     - cp -r target/allure-report/* public
