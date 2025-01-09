@@ -15,12 +15,13 @@ stages:
 
 test:
   stage: test
-  image: maven:17-eclipse-temurin
-  tags:
-    - docker
   script:
+    - echo "🚀 Starting test execution..."
     - java -version
     - mvn -version
+    - |
+      echo "Configuring Chrome options..."
+      export CHROME_OPTIONS="--headless --no-sandbox --disable-dev-shm-usage"
     - mvn clean test
     - mvn allure:report
   artifacts:
@@ -41,9 +42,8 @@ pages:
   stage: deploy
   dependencies:
     - test
-  tags:
-    - docker
   script:
+    - echo "📊 Deploying Allure report to Pages..."
     - mkdir -p public
     - cp -r target/allure-report/* public
     - |
