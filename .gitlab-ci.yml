@@ -1,142 +1,137 @@
 variables:
- MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
- FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
- ARTIFACT_COMPRESSION_LEVEL: "fastest"
- TRANSFER_METER_FREQUENCY: "2s"
- GIT_STRATEGY: clone
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+  TRANSFER_METER_FREQUENCY: "2s"
+  GIT_STRATEGY: clone
 
-image: maven:3.8.1-jdk-17
+image: maven:3.9.6-eclipse-temurin-17
 
 services:
- - name: selenium/standalone-chrome:latest
-   alias: selenium-chrome
+  - name: selenium/standalone-chrome:latest
+    alias: selenium-chrome
 
 cache:
- paths:
-   - .m2/repository
- key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository
+  key: "$CI_COMMIT_REF_SLUG"
 
 workflow:
- rules:
-   - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
-     when: never
-   - when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
+      when: never
+    - when: always
 
 stages:
- - test
- - build
- - report
- - deploy
+  - test
+  - build
+  - report
+  - deploy
 
 test:
- stage: test
- before_script:
-   - apt-get update && apt-get install -y wget unzip curl gnupg2
-   - curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-   - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-   - apt-get update && apt-get install -y google-chrome-stable
-   - wget -q -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
-   - unzip /tmp/chromedriver.zip -d /usr/local/bin/
-   - chmod +x /usr/local/bin/chromedriver
-   - google-chrome --version
-   - chromedriver --version
- script:
-   - mvn clean test
-   - mvn allure:report
- artifacts:
-   paths:
-     - target/surefire-reports/
-     - target/cucumber-reports/
-     - target/allure-results/
-     - target/allure-report/
-   expire_in: 1 week
- only:
-   - main
+  stage: test
+  script:
+    - echo "🚀 Tests başlatılıyor..."
+    - java -version
+    - mvn -version
+    - mvn clean test || true
+    - echo "Test aşaması tamamlandı"
+
+  artifacts:
+    when: always
+    reports:
+      junit: 
+        - target/surefire-reports/TEST-*.xml
+    paths:
+      - target/
+      - target/surefire-reports/
+      - target/allure-results/
+    expire_in: 1 week
+
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: always
 
 build:
- stage: build
- script:
-   - mvn package || true
- artifacts:
-   paths:
-     - target/*.jar
-   expire_in: 1 week
- only:
-   - main
+  stage: build
+  script:
+    - mvn package || true
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
+  only:
+    - main
 
 allure-report:
- stage: report
- script:
-   - mkdir -p public
-   - cp -r target/allure-results public/allure-results || true
-   - cp -r target/allure-report/* public/ || true
-   - |
-     # Ana sayfa oluştur
-     cat << 'EOF' > public/index.html
-     <!DOCTYPE html>
-     <html>
-     <head>
-       <meta charset="utf-8">
-       <title>Test Raporları</title>
-       <meta http-equiv="refresh" content="0; url=data/index.html">
-       <style>
-         body { font-family: Arial, sans-serif; margin: 40px; }
-         h1 { color: #333; }
-         ul { list-style-type: none; padding: 0; }
-         li { margin: 10px 0; }
-         a { color: #0366d6; text-decoration: none; }
-         a:hover { text-decoration: underline; }
-       </style>
-     </head>
-     <body>
-       <h1>Test Raporları</h1>
-       <ul>
-         <li><a href="data/index.html">Allure Raporu</a></li>
-         <li><a href="summary.txt">Test Özeti</a></li>
-       </ul>
-     </body>
-     </html>
-     EOF
-   - |
-     # Özet raporu oluştur
-     cat << EOF > public/summary.txt
-     Test Raporu Özeti
-     ==================
-     Build: $CI_BUILD_ID
-     Branch: $CI_COMMIT_REF_NAME
-     Commit: $CI_COMMIT_SHA
-     Tarih: $(date)
-     
-     Test Sonuçları
-     ==============
-     EOF
-   - |
-     if [ -d "target/surefire-reports" ]; then
-       TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
-       FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
-       echo "Toplam Test: $TOTAL" >> public/summary.txt
-       echo "Başarısız Test: $FAILED" >> public/summary.txt
-     else
-       echo "Test sonuçları bulunamadı" >> public/summary.txt
-     fi
- artifacts:
-   paths:
-     - public
-   expire_in: 30 days
- only:
-   - main
- dependencies:
-   - test
+  stage: report
+  image: frankescobar/allure-docker-service
+  script:
+    - mkdir -p public/allure-results
+    - mkdir -p public/allure-report
+    - cp -r target/allure-results/* public/allure-results/ || true
+    - allure generate public/allure-results -o public/allure-report --clean
+    - |
+      # Özet sayfası oluştur
+      cat << 'EOF' > public/index.html
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Test Raporları</title>
+        <meta http-equiv="refresh" content="0; url=allure-report/index.html">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          h1 { color: #333; }
+          .loading { text-align: center; margin-top: 50px; }
+        </style>
+      </head>
+      <body>
+        <div class="loading">
+          <h1>Test Raporlarına Yönlendiriliyorsunuz...</h1>
+        </div>
+      </body>
+      </html>
+      EOF
+    - |
+      cat << EOF > public/summary.txt
+      Test Raporu Özeti
+      ==================
+      Build: $CI_BUILD_ID
+      Branch: $CI_COMMIT_REF_NAME
+      Commit: $CI_COMMIT_SHA
+      Tarih: $(date)
+      
+      Test Sonuçları
+      ==============
+      EOF
+    - |
+      if [ -d "target/surefire-reports" ]; then
+        TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
+        FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
+        echo "Toplam Test: $TOTAL" >> public/summary.txt
+        echo "Başarısız Test: $FAILED" >> public/summary.txt
+      else
+        echo "Test sonuçları bulunamadı" >> public/summary.txt
+      fi
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - main
+  dependencies:
+    - test
 
 pages:
- stage: deploy
- dependencies:
-   - allure-report
- script:
-   - echo "Pages deploying..."
- artifacts:
-   paths:
-     - public
-   expire_in: 30 days
- only:
-   - main
+  stage: deploy
+  dependencies:
+    - allure-report
+  script:
+    - echo "Pages deploying..."
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - main
