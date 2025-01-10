@@ -1,7 +1,6 @@
 package com.amazon.pages;
 
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -28,10 +27,14 @@ public class HomePage {
         try {
             driver.get("https://www.amazon.com");
             wait.until(ExpectedConditions.titleContains("Amazon"));
-            // Sayfa yüklenmesini bekle
-            Thread.sleep(2000);
-            // Frame veya shadow-root kontrolü
-            driver.switchTo().defaultContent();
+            
+            // JavaScript ile sayfanın tamamen yüklenmesini bekle
+            ((JavascriptExecutor) driver).executeScript("return document.readyState").equals("complete");
+            
+            // Arama kutusunun görünür olmasını bekle
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("twotabsearchtextbox")));
+            wait.until(ExpectedConditions.visibilityOf(searchBox));
+            
         } catch (Exception e) {
             throw new RuntimeException("Ana sayfa yüklenemedi: " + e.getMessage());
         }
@@ -39,9 +42,11 @@ public class HomePage {
 
     public void enterSearchText(String searchText) {
         try {
-            wait.until(ExpectedConditions.elementToBeClickable(searchBox));
-            searchBox.clear();
-            searchBox.sendKeys(searchText);
+            // JavaScript ile elementi bul ve tıkla
+            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("twotabsearchtextbox")));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+            element.clear();
+            element.sendKeys(searchText);
         } catch (Exception e) {
             throw new RuntimeException("Arama kutusu bulunamadı: " + e.getMessage());
         }
@@ -49,7 +54,9 @@ public class HomePage {
 
     public void clickSearchButton() {
         try {
-            wait.until(ExpectedConditions.elementToBeClickable(searchButton)).click();
+            // JavaScript ile arama butonunu bul ve tıkla
+            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("nav-search-submit-button")));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
         } catch (Exception e) {
             throw new RuntimeException("Arama butonu bulunamadı: " + e.getMessage());
         }
