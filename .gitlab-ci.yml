@@ -40,9 +40,8 @@ test:
      if [ -d "target" ]; then
        echo "📁 Target dizini kontrol ediliyor..."
        ls -la target/
-       if [ -d "target/surefire-reports" ]; then
-         echo "Test raporları oluşturuldu"
-       fi
+       mkdir -p target/surefire-reports
+       touch target/surefire-reports/.gitkeep
      fi
      exit 0
 
@@ -50,9 +49,13 @@ test:
    when: always
    reports:
      junit: 
-       - target/surefire-reports/TEST-*.xml
+       - "**/TEST-*.xml"
+       - "**/surefire-reports/TEST-*.xml"
+       - "target/**/TEST-*.xml"
    paths:
      - target/
+     - "**/surefire-reports/"
+     - "**/allure-results/"
    expire_in: 1 week
 
  rules:
@@ -96,8 +99,8 @@ pages:
        echo "=============="
        
        if [ -d "target/surefire-reports" ]; then
-         TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-         FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
+         TOTAL=$(find . -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
+         FAILED=$(find . -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
          echo "Toplam Test: $TOTAL"
          echo "Başarısız: $FAILED"
        else
