@@ -2,7 +2,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
   SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
-  CHROME_OPTIONS: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080"
+  ALLURE_VERSION: "2.24.0"
 
 image: maven:3.9.6-eclipse-temurin-17
 
@@ -17,84 +17,48 @@ cache:
 
 stages:
   - test
-  - report
-  - deploy
+  - allure
+  - pages
 
 test:
   stage: test
   script:
     - echo "🚀 Tests başlatılıyor..."
     - |
-      export MAVEN_OPTS="$MAVEN_OPTS \
-        -Dselenium.grid.url=$SELENIUM_URL \
-        -Dwebdriver.chrome.whitelistedIps= \
-        -Dcucumber.publish.quiet=true \
-        -Dwebdriver.timeouts.implicitlywait=30000 \
-        -Dwebdriver.timeouts.pageLoadTimeout=30000"
-      
-    - mvn clean test -Dtest=TestRunner \
-        -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \
-        -Dselenium.grid.url=$SELENIUM_URL || true
-    - mvn allure:report || true
-
+      export MAVEN_OPTS="$MAVEN_OPTS -Dselenium.grid.url=$SELENIUM_URL"
+    - mvn clean test
   artifacts:
     when: always
     reports:
       junit: 
         - target/surefire-reports/TEST-*.xml
     paths:
-      - target/allure-results/
-      - target/allure-report/
-      - target/cucumber-reports/
-      - target/surefire-reports/
+      - target/
     expire_in: 1 week
 
-allure-report:
-  stage: report
+allure:
+  stage: allure
+  image: frankescobar/allure-docker-service
   script:
-    - mkdir -p public/cucumber-report public/allure-report
-    - cp -r target/cucumber-reports/* public/cucumber-report/ || true
-    - cp -r target/allure-report/* public/allure-report/ || true
-    - |
-      cat << 'EOF' > public/index.html
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="utf-8">
-          <title>Test Reports</title>
-          <style>
-              body { font-family: Arial, sans-serif; margin: 40px; }
-              h1 { color: #333; }
-              .reports { margin-top: 20px; }
-              a { color: #0366d6; text-decoration: none; padding: 10px; display: block; }
-              a:hover { background: #f6f8fa; }
-          </style>
-      </head>
-      <body>
-          <h1>Test Raporları</h1>
-          <div class="reports">
-              <a href="./allure-report/index.html">Allure Report</a>
-              <a href="./cucumber-report/report.html">Cucumber Report</a>
-          </div>
-      </body>
-      </html>
-      EOF
+    - apt-get update && apt-get install -y maven
+    - mkdir -p public
+    - allure generate target/allure-results -o public/allure-report || true
+    - echo '<!DOCTYPE html><meta http-equiv="refresh" content="0; url=allure-report/index.html">' > public/index.html
   artifacts:
     paths:
       - public
-    expire_in: 30 days
+    expire_in: 1 week
   dependencies:
     - test
 
 pages:
-  stage: deploy
+  stage: pages
   script:
-    - echo "Pages deploying..."
+    - echo "Deploying to pages"
   artifacts:
     paths:
       - public
-    expire_in: 30 days
   dependencies:
-    - allure-report
+    - allure
   only:
     - main
