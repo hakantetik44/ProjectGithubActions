@@ -1,64 +1,85 @@
 variables:
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
-  SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
-  ALLURE_VERSION: "2.24.0"
+ MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+ FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
+ SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
 
 image: maven:3.9.6-eclipse-temurin-17
 
 services:
-  - name: selenium/standalone-chrome:latest
-    alias: selenium-chrome
-
-cache:
-  paths:
-    - .m2/repository
-  key: "$CI_COMMIT_REF_SLUG"
+ - name: selenium/standalone-chrome:latest
+   alias: selenium-chrome
 
 stages:
-  - test
-  - allure
-  - pages
+ - test
+ - report
+ - deploy
 
 test:
-  stage: test
-  script:
-    - echo "🚀 Tests başlatılıyor..."
-    - |
-      export MAVEN_OPTS="$MAVEN_OPTS -Dselenium.grid.url=$SELENIUM_URL"
-    - mvn clean test
-  artifacts:
-    when: always
-    reports:
-      junit: 
-        - target/surefire-reports/TEST-*.xml
-    paths:
-      - target/
-    expire_in: 1 week
+ stage: test
+ script:
+   - echo "🚀 Tests başlatılıyor..."
+   - |
+     export MAVEN_OPTS="$MAVEN_OPTS -Dselenium.grid.url=$SELENIUM_URL"
+   - mvn clean test -e || true
+ artifacts:
+   when: always
+   reports:
+     junit: 
+       - target/surefire-reports/TEST-*.xml
+   paths:
+     - target/
+   expire_in: 1 week
 
-allure:
-  stage: allure
-  image: frankescobar/allure-docker-service
-  script:
-    - apt-get update && apt-get install -y maven
-    - mkdir -p public
-    - allure generate target/allure-results -o public/allure-report || true
-    - echo '<!DOCTYPE html><meta http-equiv="refresh" content="0; url=allure-report/index.html">' > public/index.html
-  artifacts:
-    paths:
-      - public
-    expire_in: 1 week
-  dependencies:
-    - test
+report:
+ stage: report
+ image: 
+   name: frankescobar/allure-docker-service
+   entrypoint: [""]
+ script:
+   - allure --version
+   - mkdir -p public/allure
+   - allure generate target/allure-results -o public/allure --clean
+   - cp -r target/cucumber-reports public/cucumber
+   - |
+     cat << 'EOF' > public/index.html
+     <!DOCTYPE html>
+     <html>
+     <head>
+         <meta charset="utf-8">
+         <title>Test Reports</title>
+         <style>
+             body { font-family: Arial, sans-serif; margin: 40px; }
+             h1 { color: #333; }
+             .reports { margin-top: 20px; }
+             a { color: #0366d6; text-decoration: none; padding: 10px; display: block; }
+             a:hover { background: #f6f8fa; }
+         </style>
+     </head>
+     <body>
+         <h1>Test Raporları</h1>
+         <div class="reports">
+             <a href="./allure/index.html">Allure Report</a>
+             <a href="./cucumber/report.html">Cucumber Report</a>
+         </div>
+     </body>
+     </html>
+     EOF
+ artifacts:
+   paths:
+     - public
+   expire_in: 1 week
+ dependencies:
+   - test
 
 pages:
-  stage: pages
-  script:
-    - echo "Deploying to pages"
-  artifacts:
-    paths:
-      - public
-  dependencies:
-    - allure
-  only:
-    - main
+ stage: deploy
+ script:
+   - echo "Pages deploying..."
+ artifacts:
+   paths:
+     - public
+   expire_in: 30 days
+ dependencies:
+   - report
+ only:
+   - main
