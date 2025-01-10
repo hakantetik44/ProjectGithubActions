@@ -22,14 +22,16 @@ stages:
 test:
  stage: test
  script:
-   - mvn clean test -Dtest=TestRunner \
-     -Dcucumber.plugin="pretty,\
-     json:target/cucumber-reports/cucumber.json,\
-     io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \
-     -Dselenium.grid.url=$SELENIUM_URL \
-     -Dwebdriver.chrome.arguments="$CHROME_OPTIONS"
+   - |
+     mvn clean test \
+       -Dtest=TestRunner \
+       -Dcucumber.plugin="pretty,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \
+       -Dselenium.grid.url=$SELENIUM_URL \
+       -Dwebdriver.chrome.arguments="$CHROME_OPTIONS"
  artifacts:
    when: always
+   reports:
+     junit: target/surefire-reports/TEST-*.xml
    paths:
      - target/allure-results/
      - target/cucumber-reports/
