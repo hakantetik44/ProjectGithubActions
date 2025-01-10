@@ -11,10 +11,10 @@ public class HomePage {
     private WebDriver driver;
     private WebDriverWait wait;
 
-    @FindBy(id = "twotabsearchtextbox")
+    @FindBy(xpath = "//input[@type='text' and @id='twotabsearchtextbox']")
     private WebElement searchBox;
 
-    @FindBy(id = "nav-search-submit-button")
+    @FindBy(xpath = "//input[@type='submit' and @id='nav-search-submit-button']")
     private WebElement searchButton;
 
     public HomePage(WebDriver driver) {
@@ -26,15 +26,22 @@ public class HomePage {
     public void navigateToHomePage() {
         try {
             driver.get("https://www.amazon.com");
+            
+            // Sayfa yüklenene kadar bekle
+            wait.until(webDriver -> ((JavascriptExecutor) webDriver)
+                    .executeScript("return document.readyState").equals("complete"));
+            
+            // Title kontrolü
             wait.until(ExpectedConditions.titleContains("Amazon"));
             
-            // JavaScript ile sayfanın tamamen yüklenmesini bekle
-            ((JavascriptExecutor) driver).executeScript("return document.readyState").equals("complete");
+            // Arama kutusunu bekle
+            By searchBoxLocator = By.xpath("//input[@type='text' and @id='twotabsearchtextbox']");
+            wait.until(ExpectedConditions.presenceOfElementLocated(searchBoxLocator));
+            wait.until(ExpectedConditions.visibilityOfElementLocated(searchBoxLocator));
+            wait.until(ExpectedConditions.elementToBeClickable(searchBoxLocator));
             
-            // Arama kutusunun görünür olmasını bekle
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.id("twotabsearchtextbox")));
-            wait.until(ExpectedConditions.visibilityOf(searchBox));
-            
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Sayfa yüklenme zaman aşımı: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("Ana sayfa yüklenemedi: " + e.getMessage());
         }
@@ -42,11 +49,13 @@ public class HomePage {
 
     public void enterSearchText(String searchText) {
         try {
-            // JavaScript ile elementi bul ve tıkla
-            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("twotabsearchtextbox")));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-            element.clear();
-            element.sendKeys(searchText);
+            // Arama kutusunu bekle ve doldur
+            wait.until(ExpectedConditions.elementToBeClickable(searchBox));
+            searchBox.clear();
+            searchBox.sendKeys(searchText);
+            
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Arama kutusu zaman aşımı: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("Arama kutusu bulunamadı: " + e.getMessage());
         }
@@ -54,9 +63,12 @@ public class HomePage {
 
     public void clickSearchButton() {
         try {
-            // JavaScript ile arama butonunu bul ve tıkla
-            WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("nav-search-submit-button")));
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+            // Arama butonunu bekle ve tıkla
+            wait.until(ExpectedConditions.elementToBeClickable(searchButton));
+            searchButton.click();
+            
+        } catch (TimeoutException e) {
+            throw new RuntimeException("Arama butonu zaman aşımı: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("Arama butonu bulunamadı: " + e.getMessage());
         }
