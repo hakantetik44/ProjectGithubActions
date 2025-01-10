@@ -40,7 +40,13 @@ test:
      echo "📋 Test Senaryoları:"
      echo "-------------------"
      mvn clean test -Dtest=TestRunner \
-       -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,progress,summary,testng:target/cucumber-reports/cucumber-results.xml" \
+       -Dcucumber.plugin="pretty:target/cucumber-reports/pretty.txt,\
+html:target/cucumber-reports/report.html,\
+json:target/cucumber-reports/cucumber.json,\
+io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,\
+progress:target/cucumber-reports/progress.txt,\
+summary,\
+testng:target/cucumber-reports/cucumber-results.xml" \
        -Dcucumber.execution.dry-run=false \
        -Dcucumber.execution.strict=true \
        -Dcucumber.execution.parallel.enabled=false \
