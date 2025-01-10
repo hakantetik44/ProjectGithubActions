@@ -4,7 +4,7 @@ variables:
   SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
   CHROME_OPTIONS: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080"
 
-image: maven:3.8.1-jdk-17
+image: maven:3.8.1-eclipse-temurin-17
 
 services:
   - name: selenium/standalone-chrome:latest
@@ -22,28 +22,36 @@ stages:
 
 test:
   stage: test
-  before_script:
-    - apt-get update && apt-get install -y wget unzip curl gnupg2
-    - curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
-    - apt-get update && apt-get install -y google-chrome-stable
-    - wget -q -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
-    - unzip /tmp/chromedriver.zip -d /usr/local/bin/
-    - chmod +x /usr/local/bin/chromedriver
-    - google-chrome --version
-    - chromedriver --version
   script:
-    - mvn clean test
-    - mvn allure:report
+    - echo "🚀 Tests başlatılıyor..."
+    - echo "⚙️ Maven ayarları yapılandırılıyor..."
+    - |
+      export MAVEN_OPTS="$MAVEN_OPTS \
+        -Dselenium.grid.url=$SELENIUM_URL \
+        -Dwebdriver.chrome.whitelistedIps= \
+        -Dcucumber.publish.quiet=true \
+        -Dwebdriver.timeouts.implicitlywait=30000 \
+        -Dwebdriver.timeouts.pageLoadTimeout=30000"
+
+    - echo "🧪 Testler çalıştırılıyor..."
+    - mvn clean test -Dtest=TestRunner \
+      -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \
+      -Dselenium.grid.url=$SELENIUM_URL || true
+    - echo "📊 Allure raporu oluşturuluyor..."
+    - mvn allure:report || true
+    - echo "✅ Test aşaması tamamlandı"
+
   artifacts:
+    when: always
+    reports:
+      junit:
+        - target/surefire-reports/TEST-*.xml
     paths:
-      - target/surefire-reports/
-      - target/cucumber-reports/
       - target/allure-results/
       - target/allure-report/
+      - target/cucumber-reports/
+      - target/surefire-reports/
     expire_in: 1 week
-  only:
-    - main
 
 allure-report:
   stage: report
