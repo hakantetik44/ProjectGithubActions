@@ -3,6 +3,7 @@ variables:
  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
  SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
  CHROME_OPTIONS: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080"
+ CUCUMBER_PUBLISH_ENABLED: "true" 
 
 image: maven:3.9.6-eclipse-temurin-17
 
@@ -31,7 +32,7 @@ test:
      export MAVEN_OPTS="$MAVEN_OPTS \
        -Dselenium.grid.url=$SELENIUM_URL \
        -Dwebdriver.chrome.whitelistedIps= \
-       -Dcucumber.publish.quiet=true \
+       -Dcucumber.publish.quiet=false \
        -Dwebdriver.timeouts.implicitlywait=30000 \
        -Dwebdriver.timeouts.pageLoadTimeout=30000"
 
@@ -39,80 +40,79 @@ test:
    - |
      echo "📋 Test Senaryoları:"
      echo "-------------------"
-     mvn clean test -Dtest=TestRunner \
-       -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,progress,summary,testng:target/cucumber-reports/cucumber-results.xml" \
+     mvn clean test -B -Dtest=TestRunner \
+       -Dcucumber.plugin="pretty,usage,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,progress,rerun:target/failed_scenarios.txt,testng:target/cucumber-reports/cucumber-results.xml" \
        -Dcucumber.execution.dry-run=false \
        -Dcucumber.execution.strict=true \
        -Dcucumber.execution.parallel.enabled=false \
        -Dcucumber.ansi-colors.disabled=false \
        -Dcucumber.filter.tags="not @ignore" \
-       -Dcucumber.snippet-type=camelcase \
-       -Dselenium.grid.url=$SELENIUM_URL || true
-     
-     echo ""
-     echo "📊 Test Sonuçları:"
-     echo "----------------"
+       -Dcucumber.monochrome=false \
+       -Dcucumber.pretty=true \
+       -Dmaven.test.failure.ignore=true \
+       -Dselenium.grid.url=$SELENIUM_URL \
+       -Dcucumber.publish.enabled=true \
+       -X || true
+
+   - echo "📊 Test Sonuçları:"
+   - |
      if [ -f "target/cucumber-reports/cucumber.json" ]; then
-       echo "✨ Senaryo Detayları:"
-       for feature in $(jq -r '.[] | @base64' target/cucumber-reports/cucumber.json); do
-         _jq() {
-           echo ${feature} | base64 --decode | jq -r ${1}
-         }
-         
-         FEATURE_NAME=$(_jq '.name')
-         echo "🌟 Feature: $FEATURE_NAME"
-         
-         echo "  📝 Senaryolar:"
-         for scenario in $(_jq '.elements[] | @base64'); do
-           _jq2() {
-             echo ${scenario} | base64 --decode | jq -r ${1}
-           }
-           
-           SCENARIO_NAME=$(_jq2 '.name')
-           echo "    🔹 $SCENARIO_NAME"
-           
-           echo "      Adımlar:"
-           for step in $(_jq2 '.steps[] | @base64'); do
-             _jq3() {
-               echo ${step} | base64 --decode | jq -r ${1}
-             }
-             
-             STEP_NAME=$(_jq3 '.keyword + " " + .name')
-             STEP_STATUS=$(_jq3 '.result.status')
-             
-             case $STEP_STATUS in
-               "passed")  ICON="✅";;
-               "failed")  ICON="❌";;
-               "skipped") ICON="⏭️";;
-               *)        ICON="❓";;
-             esac
-             
-             echo "        $ICON $STEP_NAME"
-           done
-         done
+       echo ""
+       echo "🔍 Test Adımları:"
+       echo "---------------"
+       jq -r '.[] | 
+         .name as $feature |
+         .elements[] |
+         "Feature: \($feature)\n" +
+         "  Scenario: " + .name + "\n" +
+         (.steps[] | "    " + .keyword + .name + " - " + .result.status)
+       ' target/cucumber-reports/cucumber.json |
+       while IFS= read -r line; do
+         if [[ $line == *"passed"* ]]; then
+           echo "✅ ${line% - passed}"
+         elif [[ $line == *"failed"* ]]; then
+           echo "❌ ${line% - failed}"
+         elif [[ $line == *"skipped"* ]]; then
+           echo "⏭️ ${line% - skipped}"
+         elif [[ $line == Feature* ]]; then
+           echo "🌟 $line"
+         elif [[ $line == *Scenario* ]]; then
+           echo "📝 $line"
+         else
+           echo "$line"
+         fi
        done
-       
+
        echo ""
        echo "📈 Test İstatistikleri:"
        PASSED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "passed")] | length' target/cucumber-reports/cucumber.json)
        FAILED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "failed")] | length' target/cucumber-reports/cucumber.json)
        SKIPPED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "skipped")] | length' target/cucumber-reports/cucumber.json)
+       TOTAL=$((PASSED + FAILED + SKIPPED))
        
-       echo "✅ Başarılı Adım: $PASSED"
-       echo "❌ Başarısız Adım: $FAILED"
-       echo "⏭️ Atlanan Adım: $SKIPPED"
+       echo "✅ Başarılı Adım: $PASSED / $TOTAL"
+       echo "❌ Başarısız Adım: $FAILED / $TOTAL"
+       echo "⏭️ Atlanan Adım: $SKIPPED / $TOTAL"
        
-       # Test sonuçlarını özet dosyasına yaz
-       echo "Test Özeti" > test_summary.txt
-       echo "==========" >> test_summary.txt
-       echo "Tarih: $(date)" >> test_summary.txt
-       echo "Branch: $CI_COMMIT_REF_NAME" >> test_summary.txt
-       echo "Commit: $CI_COMMIT_SHA" >> test_summary.txt
-       echo "" >> test_summary.txt
-       echo "Sonuçlar:" >> test_summary.txt
-       echo "✅ Başarılı: $PASSED" >> test_summary.txt
-       echo "❌ Başarısız: $FAILED" >> test_summary.txt
-       echo "⏭️ Atlanan: $SKIPPED" >> test_summary.txt
+       # Test özeti oluştur
+       {
+         echo "Test Özeti"
+         echo "=========="
+         echo "Tarih: $(date)"
+         echo "Branch: $CI_COMMIT_REF_NAME"
+         echo "Commit: $CI_COMMIT_SHA"
+         echo ""
+         echo "Sonuçlar:"
+         echo "✅ Başarılı: $PASSED / $TOTAL"
+         echo "❌ Başarısız: $FAILED / $TOTAL"
+         echo "⏭️ Atlanan: $SKIPPED / $TOTAL"
+         
+         echo ""
+         echo "Detaylı Adımlar:"
+         jq -r '.[] | .elements[] | .steps[] | "  " + .keyword + " " + .name + " - " + .result.status' target/cucumber-reports/cucumber.json
+       } > test_summary.txt
+     else
+       echo "⚠️ Test sonuçları bulunamadı!"
      fi
 
    - echo "📋 Allure raporu oluşturuluyor..."
@@ -248,7 +248,6 @@ allure-report:
          <script>
              document.getElementById('currentDate').textContent = new Date().toLocaleDateString();
              
-             // Test özeti dosyasını oku
              fetch('test_summary.txt')
                .then(response => response.text())
                .then(data => {
@@ -259,7 +258,8 @@ allure-report:
                    }
                    
                    const passed = parseInt(results.match(/\d+/)[0]);
-                   const failed = parseInt(lines.find(line => line.includes('❌')).match(/\d+/)[0]);
+                   const total = parseInt(results.match(/\d+/g)[1]);
+                   const failed = total - passed;
                    
                    document.getElementById('testStatus').innerHTML = failed === 0 
                        ? '✅ Tüm Testler Başarılı'
