@@ -12,10 +12,10 @@ public class HomePage {
     private WebDriver driver;
     private WebDriverWait wait;
 
-    @FindBy(css = "#twotabsearchtextbox")
+    @FindBy(css = "input#twotabsearchtextbox")
     private WebElement searchBox;
 
-    @FindBy(css = "#nav-search-submit-button")
+    @FindBy(css = "input#nav-search-submit-button")
     private WebElement searchButton;
 
     public HomePage(WebDriver driver) {
@@ -27,11 +27,12 @@ public class HomePage {
     public void navigateToHomePage() {
         driver.get("https://www.amazon.com");
         wait.until(ExpectedConditions.titleContains("Amazon"));
+        wait.until(ExpectedConditions.visibilityOf(searchBox));
     }
 
     public void enterSearchText(String searchText) {
         try {
-            wait.until(ExpectedConditions.visibilityOf(searchBox));
+            wait.until(ExpectedConditions.elementToBeClickable(searchBox));
             searchBox.clear();
             searchBox.sendKeys(searchText);
         } catch (Exception e) {

@@ -22,12 +22,20 @@ public class Hooks {
         try {
             ChromeOptions options = new ChromeOptions();
             options.addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage",
-                               "--disable-gpu", "--window-size=1920,1080");
+                               "--disable-gpu", "--window-size=1920,1080", "--remote-allow-origins=*");
+            options.setCapability("acceptInsecureCerts", true);
             
-            driver = new RemoteWebDriver(new URL(System.getProperty("selenium.grid.url")), options);
+            String seleniumUrl = System.getProperty("selenium.grid.url", "http://selenium-chrome:4444/wd/hub");
+            driver = new RemoteWebDriver(new URL(seleniumUrl), options);
+            
+            driver.manage().window().maximize();
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
+            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
+            
+            Allure.addAttachment("Browser Session", seleniumUrl);
         } catch (Exception e) {
-            Allure.addAttachment("Error", e.getMessage());
+            Allure.addAttachment("Setup Error", e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -35,13 +43,19 @@ public class Hooks {
     @After
     public void tearDown(Scenario scenario) {
         if (driver != null) {
-            if (scenario.isFailed()) {
-                Allure.addAttachment("Screenshot", "image/png",
-                    new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)),
-                    "png");
-                Allure.addAttachment("Page Source", driver.getPageSource());
+            try {
+                if (scenario.isFailed()) {
+                    byte[] screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+                    Allure.addAttachment("Failed Screenshot", "image/png", 
+                        new ByteArrayInputStream(screenshot), "png");
+                    Allure.addAttachment("Page URL", driver.getCurrentUrl());
+                    Allure.addAttachment("Page Source", driver.getPageSource());
+                }
+            } catch (Exception e) {
+                Allure.addAttachment("Teardown Error", e.getMessage());
+            } finally {
+                driver.quit();
             }
-            driver.quit();
         }
     }
 
