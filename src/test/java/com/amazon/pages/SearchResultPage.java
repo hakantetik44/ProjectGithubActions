@@ -24,7 +24,7 @@ public class SearchResultPage {
         return !searchResults.isEmpty();
     }
 
-    public boolean isSearchKeywordPresent(String keyword) {
+    public boolean isSearchKeywordPresent(String keyword) 
         return searchKeyword.getText().contains(keyword);
     }
 } 
