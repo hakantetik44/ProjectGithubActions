@@ -12,10 +12,10 @@ public class HomePage {
     private WebDriver driver;
     private WebDriverWait wait;
 
-    @FindBy(css = "input#twotabsearchtextbox")
+    @FindBy(id = "twotabsearchtextbox")
     private WebElement searchBox;
 
-    @FindBy(css = "input#nav-search-submit-button")
+    @FindBy(id = "nav-search-submit-button")
     private WebElement searchButton;
 
     public HomePage(WebDriver driver) {
@@ -25,9 +25,16 @@ public class HomePage {
     }
 
     public void navigateToHomePage() {
-        driver.get("https://www.amazon.com");
-        wait.until(ExpectedConditions.titleContains("Amazon"));
-        wait.until(ExpectedConditions.visibilityOf(searchBox));
+        try {
+            driver.get("https://www.amazon.com");
+            wait.until(ExpectedConditions.titleContains("Amazon"));
+            // Sayfa yüklenmesini bekle
+            Thread.sleep(2000);
+            // Frame veya shadow-root kontrolü
+            driver.switchTo().defaultContent();
+        } catch (Exception e) {
+            throw new RuntimeException("Ana sayfa yüklenemedi: " + e.getMessage());
+        }
     }
 
     public void enterSearchText(String searchText) {
@@ -36,7 +43,7 @@ public class HomePage {
             searchBox.clear();
             searchBox.sendKeys(searchText);
         } catch (Exception e) {
-            throw new RuntimeException("Arama kutusu bulunamadı veya tıklanamadı: " + e.getMessage());
+            throw new RuntimeException("Arama kutusu bulunamadı: " + e.getMessage());
         }
     }
 
@@ -44,7 +51,7 @@ public class HomePage {
         try {
             wait.until(ExpectedConditions.elementToBeClickable(searchButton)).click();
         } catch (Exception e) {
-            throw new RuntimeException("Arama butonu bulunamadı veya tıklanamadı: " + e.getMessage());
+            throw new RuntimeException("Arama butonu bulunamadı: " + e.getMessage());
         }
     }
 }
