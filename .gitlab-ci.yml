@@ -41,12 +41,12 @@ test:
      echo "-------------------"
      mvn clean test -Dtest=TestRunner \
        -Dcucumber.plugin="pretty:target/cucumber-reports/pretty.txt,\
-html:target/cucumber-reports/report.html,\
-json:target/cucumber-reports/cucumber.json,\
-io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,\
-progress:target/cucumber-reports/progress.txt,\
-summary,\
-testng:target/cucumber-reports/cucumber-results.xml" \
+       html:target/cucumber-reports/report.html,\
+       json:target/cucumber-reports/cucumber.json,\
+       io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,\
+       progress:target/cucumber-reports/progress.txt,\
+       summary:target/cucumber-reports/summary.txt,\
+       testng:target/cucumber-reports/cucumber-results.xml" \
        -Dcucumber.execution.dry-run=false \
        -Dcucumber.execution.strict=true \
        -Dcucumber.execution.parallel.enabled=false \
@@ -54,12 +54,14 @@ testng:target/cucumber-reports/cucumber-results.xml" \
        -Dcucumber.filter.tags="not @ignore" \
        -Dcucumber.snippet-type=camelcase \
        -Dselenium.grid.url=$SELENIUM_URL || true
-     
-     echo ""
-     echo "📊 Test Sonuçları:"
-     echo "----------------"
+
+   - |
      if [ -f "target/cucumber-reports/cucumber.json" ]; then
+       echo ""
+       echo "📊 Test Sonuçları:"
+       echo "----------------"
        echo "✨ Senaryo Detayları:"
+       
        for feature in $(jq -r '.[] | @base64' target/cucumber-reports/cucumber.json); do
          _jq() {
            echo ${feature} | base64 --decode | jq -r ${1}
@@ -97,7 +99,7 @@ testng:target/cucumber-reports/cucumber-results.xml" \
            done
          done
        done
-       
+
        echo ""
        echo "📈 Test İstatistikleri:"
        PASSED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "passed")] | length' target/cucumber-reports/cucumber.json)
@@ -109,16 +111,18 @@ testng:target/cucumber-reports/cucumber-results.xml" \
        echo "⏭️ Atlanan Adım: $SKIPPED"
        
        # Test sonuçlarını özet dosyasına yaz
-       echo "Test Özeti" > test_summary.txt
-       echo "==========" >> test_summary.txt
-       echo "Tarih: $(date)" >> test_summary.txt
-       echo "Branch: $CI_COMMIT_REF_NAME" >> test_summary.txt
-       echo "Commit: $CI_COMMIT_SHA" >> test_summary.txt
-       echo "" >> test_summary.txt
-       echo "Sonuçlar:" >> test_summary.txt
-       echo "✅ Başarılı: $PASSED" >> test_summary.txt
-       echo "❌ Başarısız: $FAILED" >> test_summary.txt
-       echo "⏭️ Atlanan: $SKIPPED" >> test_summary.txt
+       {
+         echo "Test Özeti"
+         echo "=========="
+         echo "Tarih: $(date)"
+         echo "Branch: $CI_COMMIT_REF_NAME"
+         echo "Commit: $CI_COMMIT_SHA"
+         echo ""
+         echo "Sonuçlar:"
+         echo "✅ Başarılı: $PASSED"
+         echo "❌ Başarısız: $FAILED"
+         echo "⏭️ Atlanan: $SKIPPED"
+       } > test_summary.txt
      fi
 
    - echo "📋 Allure raporu oluşturuluyor..."
