@@ -85,30 +85,27 @@ allure-report:
  script:
    - echo "📊 Allure raporu hazırlanıyor..."
    - mkdir -p public/allure-report
-   - cp -r target/allure-results public/allure-results
-   - cp -r target/allure-report/* public/allure-report/
+   - cp -r target/allure-results public/allure-results || true
+   - cp -r target/allure-report/* public/allure-report/ || true
    - echo "✅ Allure raporu hazır"
+   - echo "Test Raporu Özeti" > public/allure-report/summary.txt
+   - echo "==================" >> public/allure-report/summary.txt
+   - echo "Build: $CI_BUILD_ID" >> public/allure-report/summary.txt
+   - echo "Branch: $CI_COMMIT_REF_NAME" >> public/allure-report/summary.txt
+   - echo "Commit: $CI_COMMIT_SHA" >> public/allure-report/summary.txt
+   - echo "Tarih: $(date)" >> public/allure-report/summary.txt
+   - echo >> public/allure-report/summary.txt
+   - echo "Test Sonuçları" >> public/allure-report/summary.txt
+   - echo "==============" >> public/allure-report/summary.txt
    - |
-     {
-       echo "Test Raporu Özeti"
-       echo "=================="
-       echo "Build: $CI_BUILD_ID"
-       echo "Branch: $CI_COMMIT_REF_NAME"
-       echo "Commit: $CI_COMMIT_SHA"
-       echo "Tarih: $(date)"
-       echo
-       echo "Test Sonuçları"
-       echo "=============="
-       
-       if [ -d "target/surefire-reports" ]; then
-         TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
-         FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
-         echo "Toplam Test: $TOTAL"
-         echo "Başarısız: $FAILED"
-       else
-         echo "Test sonuçları bulunamadı"
-       fi
-     } > public/allure-report/summary.txt
+     if [ -d "target/surefire-reports" ]; then
+       TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
+       FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
+       echo "Toplam Test: $TOTAL" >> public/allure-report/summary.txt
+       echo "Başarısız: $FAILED" >> public/allure-report/summary.txt
+     else
+       echo "Test sonuçları bulunamadı" >> public/allure-report/summary.txt
+     fi
    - echo "📎 Rapor linki: https://$CI_PROJECT_NAMESPACE.gitlab.io/$CI_PROJECT_NAME/allure-report/"
  artifacts:
    paths:
