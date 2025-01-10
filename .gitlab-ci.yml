@@ -25,6 +25,7 @@ workflow:
 stages:
  - test
  - build
+ - report
  - deploy
 
 test:
@@ -33,23 +34,14 @@ test:
    - echo "🚀 Tests başlatılıyor..."
    - java -version
    - mvn -version
+   - mvn clean test allure:report || true
    - |
-     mvn clean test allure:report || true
-     echo "Test çalıştırma tamamlandı"
-     
      if [ -d "target" ]; then
        echo "📁 Target dizini kontrol ediliyor..."
        ls -la target/
-       
-       # Test raporları için dizinleri oluştur
        mkdir -p target/surefire-reports
-       
-       # En azından boş bir test raporu oluştur
-       echo '<?xml version="1.0" encoding="UTF-8"?>
-       <testsuite tests="0" failures="0" name="TestSuite">
-       </testsuite>' > target/surefire-reports/TEST-results.xml
+       echo '<?xml version="1.0" encoding="UTF-8"?><testsuite tests="0" failures="0" name="TestSuite"></testsuite>' > target/surefire-reports/TEST-results.xml
      fi
-     exit 0
 
  artifacts:
    when: always
@@ -60,6 +52,7 @@ test:
      - target/
      - target/surefire-reports/
      - target/allure-results/
+     - target/allure-report/
    expire_in: 1 week
 
  rules:
@@ -69,7 +62,6 @@ test:
 build:
  stage: build
  script:
-   - echo "Building project..."
    - mvn package || true
  artifacts:
    paths:
@@ -78,40 +70,57 @@ build:
  only:
    - main
 
+allure-report:
+ stage: report
+ script:
+   - mkdir -p public/allure-report
+   - cp -r target/allure-results public/allure-results || true
+   - cp -r target/allure-report/* public/allure-report/ || true
+   - |
+     cat << EOF > public/allure-report/summary.txt
+     Test Raporu Özeti
+     ==================
+     Build: $CI_BUILD_ID
+     Branch: $CI_COMMIT_REF_NAME
+     Commit: $CI_COMMIT_SHA
+     Tarih: $(date)
+     
+     Test Sonuçları
+     ==============
+     EOF
+   - |
+     if [ -d "target/surefire-reports" ]; then
+       TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
+       FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
+       echo "Toplam Test: $TOTAL" >> public/allure-report/summary.txt
+       echo "Başarısız Test: $FAILED" >> public/allure-report/summary.txt
+     else
+       echo "Test sonuçları bulunamadı" >> public/allure-report/summary.txt
+     fi
+ artifacts:
+   paths:
+     - public
+   expire_in: 30 days
+ only:
+   - main
+ dependencies:
+   - test
+
 pages:
  stage: deploy
  dependencies:
    - test
+   - allure-report
  script:
-   - mkdir -p public
    - |
-     if [ -d "target/allure-report" ]; then
-       cp -r target/allure-report/* public/
-     else
-       echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
-     fi
-   - |
-     {
-       echo "Test Özeti"
-       echo "==========="
-       echo "Build: $CI_BUILD_ID"
-       echo "Branch: $CI_COMMIT_REF_NAME"
-       echo "Commit: $CI_COMMIT_SHA"
-       echo "Tarih: $(date)"
-       echo
-       echo "Test Sonuçları"
-       echo "=============="
-       
-       if [ -d "target/surefire-reports" ]; then
-         TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
-         FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
-         echo "Toplam Test: $TOTAL"
-         echo "Başarısız: $FAILED"
+     if [ ! -d "public" ]; then
+       mkdir -p public
+       if [ -d "target/allure-report" ]; then
+         cp -r target/allure-report/* public/
        else
-         echo "Test sonuçları bulunamadı"
+         echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
        fi
-     } > public/summary.txt
-
+     fi
  artifacts:
    paths:
      - public
