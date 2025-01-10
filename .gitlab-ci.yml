@@ -4,6 +4,7 @@ variables:
   ARTIFACT_COMPRESSION_LEVEL: "fastest"
   TRANSFER_METER_FREQUENCY: "2s"
   GIT_STRATEGY: clone
+  ALLURE_VERSION: "2.24.0"
 
 image: maven:3.9.6-eclipse-temurin-17
 
@@ -24,7 +25,6 @@ workflow:
 
 stages:
   - test
-  - build
   - report
   - deploy
 
@@ -32,106 +32,67 @@ test:
   stage: test
   script:
     - echo "🚀 Tests başlatılıyor..."
-    - java -version
-    - mvn -version
-    - mvn clean test || true
-    - echo "Test aşaması tamamlandı"
-
+    - apt-get update && apt-get install -y wget unzip
+    - mvn clean test -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+    - mvn allure:report
   artifacts:
     when: always
     reports:
-      junit: 
+      junit:
         - target/surefire-reports/TEST-*.xml
     paths:
-      - target/
-      - target/surefire-reports/
-      - target/allure-results/
+      - target/allure-results
+      - target/allure-report
+      - target/cucumber-reports
+      - target/surefire-reports
     expire_in: 1 week
-
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: always
-
-build:
-  stage: build
-  script:
-    - mvn package || true
-  artifacts:
-    paths:
-      - target/*.jar
-    expire_in: 1 week
-  only:
-    - main
 
 allure-report:
   stage: report
-  image: frankescobar/allure-docker-service
   script:
-    - mkdir -p public/allure-results
-    - mkdir -p public/allure-report
-    - cp -r target/allure-results/* public/allure-results/ || true
-    - allure generate public/allure-results -o public/allure-report --clean
+    - mkdir -p public/cucumber-report public/allure-report
+    - cp -r target/cucumber-reports/* public/cucumber-report/ || true
+    - cp -r target/allure-report/* public/allure-report/ || true
     - |
-      # Özet sayfası oluştur
       cat << 'EOF' > public/index.html
       <!DOCTYPE html>
       <html>
       <head>
-        <meta charset="utf-8">
-        <title>Test Raporları</title>
-        <meta http-equiv="refresh" content="0; url=allure-report/index.html">
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          h1 { color: #333; }
-          .loading { text-align: center; margin-top: 50px; }
-        </style>
+          <meta charset="utf-8">
+          <title>Test Reports</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              h1 { color: #333; }
+              .reports { margin-top: 20px; }
+              a { color: #0366d6; text-decoration: none; padding: 10px; display: block; }
+              a:hover { background: #f6f8fa; }
+          </style>
       </head>
       <body>
-        <div class="loading">
-          <h1>Test Raporlarına Yönlendiriliyorsunuz...</h1>
-        </div>
+          <h1>Test Raporları</h1>
+          <div class="reports">
+              <a href="./allure-report/index.html">Allure Report</a>
+              <a href="./cucumber-report/report.html">Cucumber Report</a>
+          </div>
       </body>
       </html>
       EOF
-    - |
-      cat << EOF > public/summary.txt
-      Test Raporu Özeti
-      ==================
-      Build: $CI_BUILD_ID
-      Branch: $CI_COMMIT_REF_NAME
-      Commit: $CI_COMMIT_SHA
-      Tarih: $(date)
-      
-      Test Sonuçları
-      ==============
-      EOF
-    - |
-      if [ -d "target/surefire-reports" ]; then
-        TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
-        FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
-        echo "Toplam Test: $TOTAL" >> public/summary.txt
-        echo "Başarısız Test: $FAILED" >> public/summary.txt
-      else
-        echo "Test sonuçları bulunamadı" >> public/summary.txt
-      fi
   artifacts:
     paths:
       - public
     expire_in: 30 days
-  only:
-    - main
   dependencies:
     - test
 
 pages:
   stage: deploy
-  dependencies:
-    - allure-report
   script:
-    - echo "Pages deploying..."
+    - cp -r public/* public/
   artifacts:
     paths:
       - public
     expire_in: 30 days
+  dependencies:
+    - allure-report
   only:
     - main
