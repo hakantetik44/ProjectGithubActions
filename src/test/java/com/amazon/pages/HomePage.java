@@ -1,9 +1,9 @@
 package com.amazon.pages;
 
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
@@ -12,10 +12,10 @@ public class HomePage {
     private WebDriver driver;
     private WebDriverWait wait;
 
-    @FindBy(id = "twotabsearchtextbox")
+    @FindBy(css = "#twotabsearchtextbox")
     private WebElement searchBox;
 
-    @FindBy(id = "nav-search-submit-button")
+    @FindBy(css = "#nav-search-submit-button")
     private WebElement searchButton;
 
     public HomePage(WebDriver driver) {
@@ -30,13 +30,20 @@ public class HomePage {
     }
 
     public void enterSearchText(String searchText) {
-        wait.until(ExpectedConditions.elementToBeClickable(searchBox));
-        searchBox.clear();
-        searchBox.sendKeys(searchText);
+        try {
+            wait.until(ExpectedConditions.visibilityOf(searchBox));
+            searchBox.clear();
+            searchBox.sendKeys(searchText);
+        } catch (Exception e) {
+            throw new RuntimeException("Arama kutusu bulunamadı veya tıklanamadı: " + e.getMessage());
+        }
     }
 
     public void clickSearchButton() {
-        wait.until(ExpectedConditions.elementToBeClickable(searchButton));
-        searchButton.click();
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(searchButton)).click();
+        } catch (Exception e) {
+            throw new RuntimeException("Arama butonu bulunamadı veya tıklanamadı: " + e.getMessage());
+        }
     }
 }
