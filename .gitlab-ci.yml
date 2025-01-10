@@ -73,11 +73,39 @@ build:
 allure-report:
  stage: report
  script:
-   - mkdir -p public/allure-report
+   - mkdir -p public
    - cp -r target/allure-results public/allure-results || true
-   - cp -r target/allure-report/* public/allure-report/ || true
+   - cp -r target/allure-report/* public/ || true
    - |
-     cat << EOF > public/allure-report/summary.txt
+     # Ana sayfa oluştur
+     cat << 'EOF' > public/index.html
+     <!DOCTYPE html>
+     <html>
+     <head>
+       <meta charset="utf-8">
+       <title>Test Raporları</title>
+       <meta http-equiv="refresh" content="0; url=data/index.html">
+       <style>
+         body { font-family: Arial, sans-serif; margin: 40px; }
+         h1 { color: #333; }
+         ul { list-style-type: none; padding: 0; }
+         li { margin: 10px 0; }
+         a { color: #0366d6; text-decoration: none; }
+         a:hover { text-decoration: underline; }
+       </style>
+     </head>
+     <body>
+       <h1>Test Raporları</h1>
+       <ul>
+         <li><a href="data/index.html">Allure Raporu</a></li>
+         <li><a href="summary.txt">Test Özeti</a></li>
+       </ul>
+     </body>
+     </html>
+     EOF
+   - |
+     # Özet raporu oluştur
+     cat << EOF > public/summary.txt
      Test Raporu Özeti
      ==================
      Build: $CI_BUILD_ID
@@ -92,10 +120,10 @@ allure-report:
      if [ -d "target/surefire-reports" ]; then
        TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<testcase" {} \; | wc -l || echo "0")
        FAILED=$(find target/surefire-reports -name "TEST-*.xml" -type f -exec grep -h "<failure" {} \; | wc -l || echo "0")
-       echo "Toplam Test: $TOTAL" >> public/allure-report/summary.txt
-       echo "Başarısız Test: $FAILED" >> public/allure-report/summary.txt
+       echo "Toplam Test: $TOTAL" >> public/summary.txt
+       echo "Başarısız Test: $FAILED" >> public/summary.txt
      else
-       echo "Test sonuçları bulunamadı" >> public/allure-report/summary.txt
+       echo "Test sonuçları bulunamadı" >> public/summary.txt
      fi
  artifacts:
    paths:
@@ -109,18 +137,9 @@ allure-report:
 pages:
  stage: deploy
  dependencies:
-   - test
    - allure-report
  script:
-   - |
-     if [ ! -d "public" ]; then
-       mkdir -p public
-       if [ -d "target/allure-report" ]; then
-         cp -r target/allure-report/* public/
-       else
-         echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
-       fi
-     fi
+   - echo "Pages deploying..."
  artifacts:
    paths:
      - public
