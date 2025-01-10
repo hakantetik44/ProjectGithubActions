@@ -70,6 +70,7 @@ test:
         
         jq -r '
           .[] | 
+          "✨ Senaryo Detayları:\n" +
           "🌟 Feature: \(.name)\n" +
           (.elements[] | 
             "  📝 Senaryo: \(.name)\n" +
@@ -81,7 +82,7 @@ test:
                elif .result.status == "skipped" then "⏭️ "
                elif .result.status == "pending" then "⏳ "
                else "❓ " end) +
-              "\(.keyword) \(.name)\n" +
+              "\(.keyword | rtrimstr(" ")) \(.name)\n" +
               if .result.status == "failed" then "        ❗ Hata: \(.result.error_message)\n" else "" end
             )
           )
