@@ -9,7 +9,7 @@
 
 <img src="https://raw.githubusercontent.com/cucumber/cucumber-jvm/main/cucumber-core/src/main/resources/io/cucumber/core/logging/banner.txt" alt="Cucumber Banner" width="600">
 
-### 🚀 Modern Test Automation Framework with Java 17 & Cucumber BDD
+### 🚀  Automation Framework with Java 17 & Cucumber BDD
 </div>
 
 ## 📋 İçerik Tablosu
