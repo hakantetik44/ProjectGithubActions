@@ -2,7 +2,7 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
   SELENIUM_URL: "http://selenium-chrome:4444/wd/hub"
-  CHROME_OPTIONS: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu"
+  CHROME_OPTIONS: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1920,1080"
 
 image: maven:3.9.6-eclipse-temurin-17
 
@@ -25,19 +25,18 @@ test:
   script:
     - echo "🚀 Tests başlatılıyor..."
     - |
-      export MAVEN_OPTS="$MAVEN_OPTS -Dselenium.grid.url=$SELENIUM_URL -Dwebdriver.chrome.whitelistedIps="
+      export MAVEN_OPTS="$MAVEN_OPTS \
+        -Dselenium.grid.url=$SELENIUM_URL \
+        -Dwebdriver.chrome.whitelistedIps= \
+        -Dcucumber.publish.quiet=true \
+        -Dwebdriver.timeouts.implicitlywait=30000 \
+        -Dwebdriver.timeouts.pageLoadTimeout=30000"
       
-    - mvn clean test -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" -Dselenium.grid.url=$SELENIUM_URL || true
-    - |
-      if [ -d "target/allure-results" ]; then
-        mvn allure:report || true
-      fi
-    - |
-      mkdir -p target/allure-results target/allure-report target/cucumber-reports
-      
-      if [ ! -f "target/allure-report/index.html" ]; then
-        echo "<html><body><h1>Allure raporu oluşturulamadı</h1></body></html>" > target/allure-report/index.html
-      fi
+    - mvn clean test -Dtest=TestRunner \
+        -Dcucumber.plugin="pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm" \
+        -Dselenium.grid.url=$SELENIUM_URL || true
+    - mvn allure:report || true
+
   artifacts:
     when: always
     reports:

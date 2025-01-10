@@ -6,17 +6,15 @@ import io.cucumber.java.Scenario;
 import io.qameta.allure.Allure;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import java.io.ByteArrayInputStream;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.net.URL;
 
 public class Hooks {
     private static WebDriver driver;
@@ -34,12 +32,18 @@ public class Hooks {
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
             options.addArguments("--disable-gpu");
+            options.addArguments("--window-size=1920,1080");
+            options.addArguments("--start-maximized");
+            options.addArguments("--remote-allow-origins=*");
             
             String seleniumUrl = System.getProperty("selenium.grid.url", "http://selenium-chrome:4444/wd/hub");
             driver = new RemoteWebDriver(new URL(seleniumUrl), options);
             
             driver.manage().window().maximize();
-            driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
+            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
+            
             logger.info("Driver initialized successfully with Selenium Grid");
         } catch (Exception e) {
             logger.error("Failed to initialize driver: " + e.getMessage());
@@ -50,23 +54,18 @@ public class Hooks {
 
     @After
     public void tearDown(Scenario scenario) {
-        if (scenario.isFailed()) {
-            logger.error("Scenario failed: " + scenario.getName());
-            try {
-                byte[] screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
-                Allure.addAttachment("Failed Screenshot", "image/png", 
-                    new ByteArrayInputStream(screenshot), "png");
-                Allure.addAttachment("Error Log", scenario.getId());
-            } catch (Exception e) {
-                logger.error("Failed to take screenshot: " + e.getMessage());
-            }
-        } else {
-            logger.info("Scenario passed: " + scenario.getName());
-            Allure.addAttachment("Test End Time", 
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        }
-
         if (driver != null) {
+            if (scenario.isFailed()) {
+                logger.error("Scenario failed: " + scenario.getName());
+                try {
+                    byte[] screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
+                    Allure.addAttachment("Failed Screenshot", "image/png", 
+                        new ByteArrayInputStream(screenshot), "png");
+                    Allure.addAttachment("Error Log", scenario.getId());
+                } catch (Exception e) {
+                    logger.error("Failed to take screenshot: " + e.getMessage());
+                }
+            }
             driver.quit();
             logger.info("Driver closed successfully");
         }
