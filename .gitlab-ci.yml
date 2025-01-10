@@ -1,108 +1,27 @@
-variables:
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-  FF_USE_LEGACY_ARTIFACTS_UPLOAD: "true"
-  ARTIFACT_COMPRESSION_LEVEL: "fastest"
-  TRANSFER_METER_FREQUENCY: "2s"
-  GIT_STRATEGY: clone
-
-image: maven:3.9.6-eclipse-temurin-17
-
-services:
-  - name: selenium/standalone-chrome:latest
-    alias: selenium-chrome
-
-cache:
-  paths:
-    - .m2/repository
-  key: "$CI_COMMIT_REF_SLUG"
-
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'external_pull_request_event'
-      when: never
-    - when: always
+image: maven:3.8.1-jdk-11
 
 stages:
   - test
-  - build
-  - deploy
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
 
 test:
   stage: test
+  before_script:
+    - apt-get update && apt-get install -y wget unzip
+    - wget -q -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
+    - unzip /tmp/chromedriver.zip -d /usr/local/bin/
+    - chmod +x /usr/local/bin/chromedriver
+    - google-chrome --version
+    - chromedriver --version
   script:
-    - echo "🚀 Tests başlatılıyor..."
-    - java -version
-    - mvn -version
-    - mvn -X clean test allure:report
-  
-    - |
-      if [ -d "target" ]; then
-        echo "📁 Target dizini kontrol ediliyor..."
-        ls -la target/
-      fi
-
+    - mvn clean test
   artifacts:
-    when: always
-    reports:
-      junit: 
-        - target/surefire-reports/TEST-*.xml
     paths:
-      - target/
+      - target/surefire-reports/
+      - target/cucumber-reports/
+      - target/allure-results/
     expire_in: 1 week
-
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: always
-
-build:
-  stage: build
-  script:
-    - echo "Building project..."
-    - mvn package
-  artifacts:
-    paths:
-      - target/*.jar
-    expire_in: 1 week
-  only:
-    - main
-
-pages:
-  stage: deploy
-  dependencies:
-    - test
-  script:
-    - mkdir -p public
-    - |
-      if [ -d "target/allure-report" ]; then
-        cp -r target/allure-report/* public/
-      else
-        echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
-      fi
-    - |
-      {
-        echo "Test Özeti"
-        echo "==========="
-        echo "Build: $CI_BUILD_ID"
-        echo "Branch: $CI_COMMIT_REF_NAME"
-        echo "Commit: $CI_COMMIT_SHA"
-        echo "Tarih: $(date)"
-        echo
-        echo "Test Sonuçları"
-        echo "=============="
-        
-        if [ -d "target/surefire-reports" ]; then
-          TOTAL=$(grep -c "<testcase" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-          FAILED=$(grep -c "<failure" target/surefire-reports/TEST-*.xml 2>/dev/null || echo "0")
-          echo "Toplam Test: $TOTAL"
-          echo "Başarısız: $FAILED"
-        else
-          echo "Test sonuçları bulunamadı"
-        fi
-      } > public/summary.txt
-
-  artifacts:
-    paths:
-      - public
-    expire_in: 30 days
   only:
     - main

@@ -2,9 +2,7 @@ package com.amazon.runners;
 
 import io.cucumber.junit.Cucumber;
 import io.cucumber.junit.CucumberOptions;
-import org.junit.AfterClass;
 import org.junit.runner.RunWith;
-import java.io.File;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(
@@ -19,17 +17,5 @@ import java.io.File;
     monochrome = true
 )
 public class TestRunner {
-    @AfterClass
-    public static void createReportDirectories() {
-        // Sadece dizinleri oluştur, raporu açma
-        File targetDir = new File("target");
-        if (!targetDir.exists()) {
-            targetDir.mkdir();
-        }
-        
-        File reportsDir = new File("target/cucumber-reports");
-        if (!reportsDir.exists()) {
-            reportsDir.mkdir();
-        }
-    }
+    // Testlerinizi çalıştıran kod burada
 } 
