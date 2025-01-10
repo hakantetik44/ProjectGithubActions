@@ -22,6 +22,8 @@ stages:
 
 test:
  stage: test
+ before_script:
+   - apt-get update && apt-get install -y jq
  script:
    - echo "🚀 Tests başlatılıyor..."
    - echo "⚙️ Maven ayarları yapılandırılıyor..."
@@ -52,17 +54,65 @@ test:
      echo "----------------"
      if [ -f "target/cucumber-reports/cucumber.json" ]; then
        echo "✨ Senaryo Detayları:"
-       cat target/cucumber-reports/cucumber.json | jq -r '.[] | .elements[] | "🔹 " + .name + " - " + .keyword'
+       for feature in $(jq -r '.[] | @base64' target/cucumber-reports/cucumber.json); do
+         _jq() {
+           echo ${feature} | base64 --decode | jq -r ${1}
+         }
+         
+         FEATURE_NAME=$(_jq '.name')
+         echo "🌟 Feature: $FEATURE_NAME"
+         
+         echo "  📝 Senaryolar:"
+         for scenario in $(_jq '.elements[] | @base64'); do
+           _jq2() {
+             echo ${scenario} | base64 --decode | jq -r ${1}
+           }
+           
+           SCENARIO_NAME=$(_jq2 '.name')
+           echo "    🔹 $SCENARIO_NAME"
+           
+           echo "      Adımlar:"
+           for step in $(_jq2 '.steps[] | @base64'); do
+             _jq3() {
+               echo ${step} | base64 --decode | jq -r ${1}
+             }
+             
+             STEP_NAME=$(_jq3 '.keyword + " " + .name')
+             STEP_STATUS=$(_jq3 '.result.status')
+             
+             case $STEP_STATUS in
+               "passed")  ICON="✅";;
+               "failed")  ICON="❌";;
+               "skipped") ICON="⏭️";;
+               *)        ICON="❓";;
+             esac
+             
+             echo "        $ICON $STEP_NAME"
+           done
+         done
+       done
        
        echo ""
        echo "📈 Test İstatistikleri:"
-       PASSED=$(cat target/cucumber-reports/cucumber.json | jq '[.[] | .elements[] | .steps[] | select(.result.status == "passed")] | length')
-       FAILED=$(cat target/cucumber-reports/cucumber.json | jq '[.[] | .elements[] | .steps[] | select(.result.status == "failed")] | length')
-       SKIPPED=$(cat target/cucumber-reports/cucumber.json | jq '[.[] | .elements[] | .steps[] | select(.result.status == "skipped")] | length')
+       PASSED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "passed")] | length' target/cucumber-reports/cucumber.json)
+       FAILED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "failed")] | length' target/cucumber-reports/cucumber.json)
+       SKIPPED=$(jq '[.[] | .elements[] | .steps[] | select(.result.status == "skipped")] | length' target/cucumber-reports/cucumber.json)
        
        echo "✅ Başarılı Adım: $PASSED"
        echo "❌ Başarısız Adım: $FAILED"
        echo "⏭️ Atlanan Adım: $SKIPPED"
+       
+       # Test sonuçlarını özet dosyasına yaz
+       echo "Test Özeti" > test_summary.txt
+       echo "==========" >> test_summary.txt
+       echo "Tarih: $(date)" >> test_summary.txt
+       echo "Branch: $CI_COMMIT_REF_NAME" >> test_summary.txt
+       echo "Commit: $CI_COMMIT_SHA" >> test_summary.txt
+       echo "" >> test_summary.txt
+       echo "Sonuçlar:" >> test_summary.txt
+       echo "✅ Başarılı: $PASSED" >> test_summary.txt
+       echo "❌ Başarısız: $FAILED" >> test_summary.txt
+       echo "⏭️ Atlanan: $SKIPPED" >> test_summary.txt
      fi
 
    - echo "📋 Allure raporu oluşturuluyor..."
@@ -79,6 +129,7 @@ test:
      - target/allure-report/
      - target/cucumber-reports/
      - target/surefire-reports/
+     - test_summary.txt
    expire_in: 1 week
 
 allure-report:
@@ -89,6 +140,7 @@ allure-report:
    - echo "📋 Raporlar kopyalanıyor..."
    - cp -r target/cucumber-reports/* public/cucumber-report/ || true
    - cp -r target/allure-report/* public/allure-report/ || true
+   - cp test_summary.txt public/ || true
    - echo "🎨 Index sayfası oluşturuluyor..."
    - |
      cat << 'EOF' > public/index.html
@@ -161,7 +213,7 @@ allure-report:
              <div class="stat-card">
                  <i class="fas fa-vial"></i>
                  <h3>Test Sonuçları</h3>
-                 <p>${CI_JOB_NAME}</p>
+                 <p id="testResults">Yükleniyor...</p>
              </div>
              <div class="stat-card">
                  <i class="fas fa-code-branch"></i>
@@ -176,7 +228,7 @@ allure-report:
              <div class="stat-card">
                  <i class="fas fa-check-circle"></i>
                  <h3>Test Durumu</h3>
-                 <p id="testStatus"></p>
+                 <p id="testStatus">Yükleniyor...</p>
              </div>
          </div>
          <div class="reports">
@@ -188,23 +240,33 @@ allure-report:
                  <i class="fas fa-file-alt"></i>
                  Cucumber Report - BDD Test Sonuçları
              </a>
+             <a href="./test_summary.txt" class="report-link">
+                 <i class="fas fa-file-text"></i>
+                 Test Özeti
+             </a>
          </div>
          <script>
              document.getElementById('currentDate').textContent = new Date().toLocaleDateString();
-             // Test durumunu kontrol et
-             fetch('cucumber-report/cucumber.json')
-               .then(response => response.json())
+             
+             // Test özeti dosyasını oku
+             fetch('test_summary.txt')
+               .then(response => response.text())
                .then(data => {
-                   const passedSteps = data.reduce((acc, feature) => 
-                       acc + feature.elements.reduce((acc2, scenario) => 
-                           acc2 + scenario.steps.filter(step => step.result.status === 'passed').length, 0), 0);
-                   const totalSteps = data.reduce((acc, feature) => 
-                       acc + feature.elements.reduce((acc2, scenario) => 
-                           acc2 + scenario.steps.length, 0), 0);
-                   const status = passedSteps === totalSteps ? '✅ Tüm Testler Başarılı' : '❌ Başarısız Testler Var';
-                   document.getElementById('testStatus').textContent = status;
+                   const lines = data.split('\n');
+                   const results = lines.find(line => line.includes('✅'));
+                   if (results) {
+                       document.getElementById('testResults').innerHTML = results;
+                   }
+                   
+                   const passed = parseInt(results.match(/\d+/)[0]);
+                   const failed = parseInt(lines.find(line => line.includes('❌')).match(/\d+/)[0]);
+                   
+                   document.getElementById('testStatus').innerHTML = failed === 0 
+                       ? '✅ Tüm Testler Başarılı'
+                       : `❌ ${failed} Test Başarısız`;
                })
                .catch(() => {
+                   document.getElementById('testResults').textContent = 'Sonuç Bulunamadı';
                    document.getElementById('testStatus').textContent = 'Durum Bilinmiyor';
                });
          </script>
