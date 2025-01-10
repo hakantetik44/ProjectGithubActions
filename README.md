@@ -1,73 +1,54 @@
 <div align="center">
+  <img src="https://www.selenium.dev/images/selenium_logo_square_green.png" alt="Selenium Logo" width="100"/>
+  <h1>🌟 Amazon E2E Test Automation Framework</h1>
 
-# 🌟 Amazon E2E Test Automation Framework
-[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
-[![Selenium](https://img.shields.io/badge/Selenium-4.16.1-green.svg)](https://www.selenium.dev/)
-[![Cucumber](https://img.shields.io/badge/Cucumber-7.14.0-brightgreen.svg)](https://cucumber.io/)
-[![Maven](https://img.shields.io/badge/Maven-3.8.1-red.svg)](https://maven.apache.org/)
-[![Allure](https://img.shields.io/badge/Allure-2.24.0-yellow.svg)](http://allure.qatools.ru/)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg?logo=java)](https://www.oracle.com/java/)
+[![Selenium](https://img.shields.io/badge/Selenium-4.16.1-green.svg?logo=selenium)](https://www.selenium.dev/)
+[![Cucumber](https://img.shields.io/badge/Cucumber-7.14.0-brightgreen.svg?logo=cucumber)](https://cucumber.io/)
+[![Maven](https://img.shields.io/badge/Maven-3.8.1-red.svg?logo=apache-maven)](https://maven.apache.org/)
+[![Allure](https://img.shields.io/badge/Allure-2.24.0-yellow.svg?logo=qameta)](http://allure.qatools.ru/)
+[![GitLab CI](https://img.shields.io/badge/GitLab%20CI-Pipeline-orange.svg?logo=gitlab)](https://gitlab.com/)
+[![Log4j2](https://img.shields.io/badge/Log4j2-Logging-blue.svg?logo=apache)](https://logging.apache.org/log4j/2.x/)
 
-<img src="https://raw.githubusercontent.com/cucumber/cucumber-jvm/main/cucumber-core/src/main/resources/io/cucumber/core/logging/banner.txt" alt="Cucumber Banner" width="600">
-
-### 🚀  Automation Framework with Java 17 & Cucumber BDD
 </div>
 
-## 📋 İçerik Tablosu
-- [Genel Bakış](#-genel-bakış)
-- [Teknoloji Yığını](#-teknoloji-yığını)
-- [Proje Yapısı](#-proje-yapısı)
-- [Özellikler](#-özellikler)
-- [Gereksinimler](#-gereksinimler)
-- [Kurulum](#-kurulum)
-- [Testleri Çalıştırma](#-testleri-çalıştırma)
-- [Raporlama](#-raporlama)
-- [CI/CD](#-cicd)
+## 📑 İçindekiler
+- [🎯 Proje Hakkında](#-proje-hakkında)
+- [⚡ Hızlı Başlangıç](#-hızlı-başlangıç)
+- [🛠️ Teknolojiler & Araçlar](#️-teknolojiler--araçlar)
+- [📂 Proje Yapısı](#-proje-yapısı)
+- [🚀 Test Senaryoları](#-test-senaryoları)
+- [📊 Raporlama](#-raporlama)
+- [🔄 CI/CD Pipeline](#-cicd-pipeline)
+- [📱 Cross Browser Testing](#-cross-browser-testing)
+- [📝 Test Logları](#-test-logları)
+- [🐛 Hata Ayıklama](#-hata-ayıklama)
+- [📚 Dokümantasyon](#-dokümantasyon)
 
-## 🎯 Genel Bakış
-Bu framework, Amazon web uygulamasının end-to-end testlerini otomatize etmek için tasarlanmıştır. Modern Java 17 özellikleri, Cucumber BDD yaklaşımı ve Page Object Model (POM) tasarım desenini kullanır.
+## 🎯 Proje Hakkında
+Bu framework, Amazon web sitesinin end-to-end testlerini otomatize etmek için geliştirilmiştir. 
+Modern test otomasyonu araçları ve best practice'leri kullanılarak oluşturulmuştur.
 
-## 💻 Teknoloji Yığını
-- **Java 17**: Programlama Dili
-- **Selenium 4**: Web Otomasyon
-- **Cucumber 7**: BDD Framework
-- **Maven**: Bağımlılık Yönetimi
-- **Allure**: Test Raporlama
-- **Log4j2**: Loglama
-- **GitLab CI/CD**: Sürekli Entegrasyon
-- **JUnit**: Test Framework
+### 🌟 Özellikler
+- ✨ Page Object Model (POM) tasarım deseni
+- 🔄 Cross-browser testing desteği
+- 📱 Responsive test yeteneği
+- 🎯 BDD yaklaşımı
+- 📊 Kapsamlı raporlama
+- 🔍 Otomatik screenshot
+- 📝 Detaylı loglama
 
-## 📂 Proje Yapısı
-```
-src
-├── test
-│   ├── java
-│   │   └── com.amazon
-│   │       ├── pages          # Page Object Classes
-│   │       ├── steps          # Step Definitions
-│   │       └── runners        # Test Runners
-│   └── resources
-│       ├── features          # Cucumber Feature Files
-│       └── log4j2.xml        # Logging Configuration
-```
+## ⚡ Hızlı Başlangıç
 
-## ✨ Özellikler
-- 🎯 Page Object Model mimarisi
-- 📝 Cucumber BDD senaryoları
-- 📊 Allure raporlama entegrasyonu
-- 📝 Detaylı loglama sistemi
-- 🔄 GitLab CI/CD entegrasyonu
-- 📸 Hata durumunda ekran görüntüsü
-- ⚡ Paralel test çalıştırma desteği
+### 📋 Ön Gereksinimler
+- ☕ Java 17 JDK
+- 📦 Maven 3.8+
+- 🌐 Chrome/Firefox Browser
+- 🔧 Git
 
-## 🔧 Gereksinimler
-- Java 17 JDK
-- Maven 3.8+
-- Chrome/Firefox Browser
-- Git
-
-## 💿 Kurulum
+### 🔨 Kurulum
 ```bash
-# Projeyi klonlayın
+# Repository'yi klonlayın
 git clone https://gitlab.com/your-username/amazon-test-automation.git
 
 # Proje dizinine gidin
@@ -77,49 +58,50 @@ cd amazon-test-automation
 mvn clean install
 ```
 
-## 🚀 Testleri Çalıştırma
-### Maven ile:
-```bash
-mvn clean test
+## 🚀️ Teknolojiler & Araçlar
+| Kategori        | Teknoloji/Araç                                              |
+|-----------------|-------------------------------------------------------------|
+| 💻 Dil          | ![Java](https://img.shields.io/badge/Java-17-orange)        |
+| 🌐 Otomasyon    | ![Selenium](https://img.shields.io/badge/Selenium-4.16.1-green) |
+| 🥒 BDD          | ![Cucumber](https://img.shields.io/badge/Cucumber-7.14.0-brightgreen) |
+| 📦 Build        | ![Maven](https://img.shields.io/badge/Maven-3.8.1-red)      |
+| 📊 Raporlama    | ![Allure](https://img.shields.io/badge/Allure-2.24.0-yellow) |
+| 📝 Loglama      | ![Log4j2](https://img.shields.io/badge/Log4j2-Latest-blue)  |
+| ✅ Assertions   | ![JUnit](https://img.shields.io/badge/JUnit-4.13-blue)      |
+| 🔄 CI/CD        | ![GitLab CI](https://img.shields.io/badge/GitLab%20CI-Pipeline-orange) |
+
+## 📂 Proje Yapısı
+```
+📦 amazon-test-automation
+ ┣ 📂 src/test/java/com/amazon
+ ┃ ┣ 📂 pages
+ ┃ ┃ ┣ 📜 BasePage.java
+ ┃ ┃ ┣ 📜 HomePage.java
+ ┃ ┃ ┗ 📜 SearchResultPage.java
+ ┃ ┣ 📂 steps
+ ┃ ┃ ┣ 📜 Hooks.java
+ ┃ ┃ ┗ 📜 SearchSteps.java
+ ┃ ┣ 📂 utils
+ ┃ ┃ ┣ 📜 BrowserUtils.java
+ ┃ ┃ ┣ 📜 ConfigReader.java
+ ┃ ┃ ┗ 📜 Driver.java
+ ┃ ┗ 📂 runners
+ ┃   ┗ 📜 TestRunner.java
+ ┣ 📂 src/test/resources
+ ┃ ┣ 📂 features
+ ┃ ┃ ┗ 📜 amazon_search.feature
+ ┃ ┣ 📜 config.properties
+ ┃ ┗ 📜 log4j2.xml
+ ┗ 📜 pom.xml
 ```
 
-### Script ile:
-Windows:
-```bash
-run-tests.bat
-```
+## 🚀 Test Senaryoları
 
-Mac/Linux:
-```bash
-chmod +x run-tests.sh
-./run-tests.sh
-```
-
-## 📊 Raporlama
-### Allure Raporu
-```bash
-# Raporu oluştur ve aç
-mvn allure:serve
-
-# Sadece rapor oluştur
-mvn allure:report
-```
-
-### Cucumber Raporu
-- HTML: `target/cucumber-reports/report.html`
-- JSON: `target/cucumber-reports/cucumber.json`
-
-## 🔄 CI/CD
-GitLab CI/CD pipeline'ı şunları içerir:
-- 🔄 Otomatik test çalıştırma
-- 📊 Rapor oluşturma
-- 📨 Sonuç bildirimi
-- 📁 Artifact saklama
-
-## 🎯 Test Senaryosu Örneği
+### 🔍 Arama Fonksiyonu
 ```gherkin
 Feature: Amazon Arama Fonksiyonu
-
+  
+  @smoke @regression
   Scenario: Kullanici Amazon'da urun arayabilmeli
     Given Kullanici Amazon ana sayfasina gider
     When Kullanici arama kutusuna "laptop" yazar
@@ -128,21 +110,99 @@ Feature: Amazon Arama Fonksiyonu
     And Sonuclarda "laptop" kelimesi bulunmali
 ```
 
+### 🏃 Testleri Çalıştırma
+```bash
+# Tüm testleri çalıştır
+mvn clean test
+
+# Belirli tag'leri çalıştır
+mvn test -Dcucumber.filter.tags="@smoke"
+
+# Paralel test çalıştır
+mvn test -Dparallel=methods -DthreadCount=4
+```
+
+## 📊 Raporlama
+
+### 📈 Allure Raporu
+```bash
+# Raporu oluştur
+mvn allure:report
+
+# Raporu görüntüle
+mvn allure:serve
+```
+
+### 🥒 Cucumber Raporu
+- 📊 HTML: `target/cucumber-reports/report.html`
+- 📋 JSON: `target/cucumber-reports/cucumber.json`
+- 📝 JUnit: `target/surefire-reports/TEST-*.xml`
+
+## 🔄 CI/CD Pipeline
+
+### 📋 Pipeline Aşamaları
+1. 🔨 Build
+   - Maven bağımlılıklarını yükle
+   - Projeyi derle
+
+2. 🧪 Test
+   - Selenium Grid'i başlat
+   - Testleri çalıştır
+   - Test sonuçlarını kaydet
+
+3. 📊 Report
+   - Allure raporu oluştur
+   - Cucumber raporu oluştur
+   - Test özetini hazırla
+
+4. 📤 Deploy
+   - Raporları GitLab Pages'e yükle
+   - Artifact'ları arşivle
+
+## 📱 Cross Browser Testing
+- 🌐 Chrome
+- 🦊 Firefox
+- 🧭 Edge
+- 🎯 Safari
+
+## 📝 Test Logları
+```log
+[INFO] Tests running...
+[INFO] ✅ Homepage loaded successfully
+[INFO] ✅ Search box found and clicked
+[INFO] ✅ Search results displayed
+[ERROR] ❌ Element not found: product-price
+```
+
+## 🐛 Hata Ayıklama
+```java
+// Debug modu için
+mvn test -Dmaven.surefire.debug
+
+// Remote debugging
+-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005
+```
+
 ## 🤝 Katkıda Bulunma
-1. Fork yapın
-2. Feature branch oluşturun (`git checkout -b feature/YeniOzellik`)
-3. Değişikliklerinizi commit edin (`git commit -m 'Yeni özellik eklendi'`)
-4. Branch'inizi push edin (`git push origin feature/YeniOzellik`)
-5. Pull Request oluşturun
+1. 🍴 Fork yapın
+2. 🌿 Feature branch oluşturun
+3. 💾 Değişikliklerinizi commit edin
+4. 📤 Branch'inizi push edin
+5. 📫 Pull Request gönderin
+
+## 📞 İletişim
+<div align="center">
+  
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/yourusername)
+[![Email](https://img.shields.io/badge/Email-Contact-red?style=for-the-badge&logo=gmail)](mailto:your.email@example.com)
+[![Twitter](https://img.shields.io/badge/Twitter-Follow-blue?style=for-the-badge&logo=twitter)](https://twitter.com/yourusername)
+
+</div>
 
 ---
 
 <div align="center">
-
-### 📫 İletişim
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue.svg)](https://linkedin.com/in/yourusername)
-[![Email](https://img.shields.io/badge/Email-Contact-red.svg)](mailto:your.email@example.com)
-
-**Made with ❤️ by [Your Name]**
-
+  <strong>🌟 Bu proje ile ilgili detaylı bilgi için <a href="https://your-documentation-link.com">dokümantasyonu</a> inceleyebilirsiniz.</strong>
+  
+  Made with ❤️ by [Your Name]
 </div>
