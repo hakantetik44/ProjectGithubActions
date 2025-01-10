@@ -25,6 +25,7 @@ workflow:
 stages:
  - test
  - build
+ - report
  - deploy
 
 test:
@@ -60,6 +61,7 @@ test:
      - target/
      - target/surefire-reports/
      - target/allure-results/
+     - target/allure-report/
    expire_in: 1 week
 
  rules:
@@ -78,22 +80,18 @@ build:
  only:
    - main
 
-pages:
- stage: deploy
- dependencies:
-   - test
+allure-report:
+ stage: report
  script:
-   - mkdir -p public
-   - |
-     if [ -d "target/allure-report" ]; then
-       cp -r target/allure-report/* public/
-     else
-       echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
-     fi
+   - echo "📊 Allure raporu hazırlanıyor..."
+   - mkdir -p public/allure-report
+   - cp -r target/allure-results public/allure-results
+   - cp -r target/allure-report/* public/allure-report/
+   - echo "✅ Allure raporu hazır"
    - |
      {
-       echo "Test Özeti"
-       echo "==========="
+       echo "Test Raporu Özeti"
+       echo "=================="
        echo "Build: $CI_BUILD_ID"
        echo "Branch: $CI_COMMIT_REF_NAME"
        echo "Commit: $CI_COMMIT_SHA"
@@ -110,8 +108,33 @@ pages:
        else
          echo "Test sonuçları bulunamadı"
        fi
-     } > public/summary.txt
+     } > public/allure-report/summary.txt
+   - echo "📎 Rapor linki: https://$CI_PROJECT_NAMESPACE.gitlab.io/$CI_PROJECT_NAME/allure-report/"
+ artifacts:
+   paths:
+     - public
+   expire_in: 30 days
+ only:
+   - main
+ dependencies:
+   - test
 
+pages:
+ stage: deploy
+ dependencies:
+   - test
+   - allure-report
+ script:
+   - echo "📄 Pages deploy ediliyor..."
+   - |
+     if [ ! -d "public" ]; then
+       mkdir -p public
+       if [ -d "target/allure-report" ]; then
+         cp -r target/allure-report/* public/
+       else
+         echo "<html><body><h1>Test Raporu Bulunamadı</h1></body></html>" > public/index.html
+       fi
+     fi
  artifacts:
    paths:
      - public
