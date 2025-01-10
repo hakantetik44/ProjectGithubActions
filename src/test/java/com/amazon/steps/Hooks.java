@@ -9,8 +9,10 @@ import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import java.io.ByteArrayInputStream;
+import java.net.URL;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,32 +22,24 @@ public class Hooks {
     private static final Logger logger = LogManager.getLogger(Hooks.class);
 
     @Before
-    public void setUp(Scenario scenario) {
-        logger.info("Starting scenario: " + scenario.getName());
-        Allure.addAttachment("Test Start Time", 
-            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        
+    public void setUp() {
         try {
             ChromeOptions options = new ChromeOptions();
-            // `--headless` seçeneğini kaldırarak tarayıcı penceresinin açılmasını sağlayın
-            // options.addArguments("--headless");
+            options.addArguments("--headless");
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
             options.addArguments("--disable-gpu");
             options.addArguments("--window-size=1920,1080");
-            options.addArguments("--start-maximized");
             
-            driver = new ChromeDriver(options);
+            String seleniumUrl = System.getProperty("selenium.grid.url", "http://selenium-chrome:4444/wd/hub");
+            driver = new RemoteWebDriver(new URL(seleniumUrl), options);
             
-            driver.manage().window().maximize();
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
-            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
             
-            logger.info("Driver initialized successfully");
+            logger.info("WebDriver başarıyla başlatıldı");
         } catch (Exception e) {
-            logger.error("Failed to initialize driver: " + e.getMessage());
-            Allure.addAttachment("Driver Init Error", e.getMessage());
+            logger.error("WebDriver başlatılamadı: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
