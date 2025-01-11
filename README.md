@@ -183,6 +183,46 @@ mvn test -Dmaven.surefire.debug
 -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005
 ```
 
+
+
+
+
+## CI/CD Pipeline Açıklaması
+
+### Variables
+İlk olarak `variables` kısmına odaklanalım. Burada, projemizde kullanacağımız bazı ayarları tanımlıyoruz. Örneğin, Maven için gerekli olan `MAVEN_OPTS` değişkenini burada tanımlıyoruz. Bu değişken, Maven'in yerel depo yolu gibi ayarları içeriyor, böylece projedeki bağımlılıkları doğru şekilde yönetebiliyoruz.
+
+Ardından, `SELENIUM_URL` ve `CHROME_OPTIONS` gibi değişkenlerimizi belirliyoruz. Selenium Grid ile çalışacağımız için Selenium URL'sini bu şekilde tanımlıyoruz. Chrome seçenekleri de burada belirleniyor. Mesela, tarayıcının başsız modda çalışmasını sağlayacak parametreleri burada belirtiyoruz.
+
+### Image
+`Image` kısmında, kullanacağımız Docker imajını belirliyoruz. Burada, `maven:3.9.6-eclipse-temurin-17` imajını kullanıyoruz. Bu imaj, Java 17 ile uyumlu bir Maven ortamı sağlıyor ve testlerimiz için gerekli tüm araçlara sahip.
+
+### Services
+`Services` kısmında ise, Selenium Grid'i başlatacak bir container tanımlıyoruz. `selenium/standalone-chrome` imajını kullanarak, Chrome tarayıcısı üzerinde test yapabilmek için gerekli olan Selenium Grid servisini başlatıyoruz. Bu servis, testlerimizin doğru şekilde çalışması için kritik bir rol oynuyor.
+
+### Cache
+Şimdi, `cache` kısmına geçelim. Burada, Maven bağımlılıklarını `.m2/repository` dizininde tutuyoruz. Bu sayede, her CI çalıştırmasında aynı bağımlılıkları tekrar indirmemize gerek kalmıyor. Böylece daha hızlı bir test süreci sağlıyoruz.
+
+### Stages
+Sonrasında, `stages` kısmında test, raporlama ve dağıtım adımlarını tanımlıyoruz. İlk olarak test aşamasında testlerimizi çalıştırıyoruz. Testlerin başlamadan önce, bazı ek paketlerin yüklendiği `before_script` kısmı var. Bu aşamada, Selenium Grid'in başlatılıp başlatılmadığını kontrol ediyoruz.
+
+### Test
+Testlerimizi çalıştırmadan önce, Maven ile gerekli tüm ayarları yapıyoruz. Burada, Selenium Grid URL'sini, Chrome tarayıcısının ayarlarını ve diğer gerekli parametreleri environment variables üzerinden aktarıyoruz. Ardından, testleri çalıştırmaya başlıyoruz. Bu aşama, `mvn clean test` komutuyla başlıyor ve test raporlarını belirli formatlarda oluşturuyoruz.
+
+### Test Sonuçları
+Test sonuçlarını aldıktan sonra, `jq` komutunu kullanarak JSON dosyasından test raporlarını analiz ediyoruz. Başarı, başarısızlık, atlanmış ve bekleyen adımları sayıyoruz ve bu sonuçları raporluyoruz. Ayrıca, test özeti ve detayları bir dosyaya yazılıyor.
+
+### Artifacts
+`Artifacts` kısmında ise, test raporlarını, Allure ve Cucumber raporlarını, ve test özetini saklıyoruz. Bu dosyalar daha sonra raporlama aşamasında kullanılmak üzere saklanıyor.
+
+### Raporlama
+Raporlama aşamasında, `allure:report` komutuyla Allure raporunu oluşturuyoruz ve Cucumber raporunu da benzer şekilde kopyalayıp uygun dizinlere yerleştiriyoruz. Bu raporlar, testlerin detaylarını görsel olarak sunarak, kullanıcıya daha anlaşılır bir biçimde sunuluyor.
+
+### Deploy
+Son olarak, `pages` kısmında, tüm raporları GitLab Pages üzerinden yayınlıyoruz. Bu sayede, test raporlarına kolayca erişilebiliyor ve tüm proje ekibi sonuçları inceleyebiliyor. Bu adımda raporların yayına alınması için gerekli tüm işlemler yapılıyor.
+
+Bu yapı, testlerimizin sorunsuz bir şekilde çalışmasını sağlıyor, ayrıca her aşamanın raporlanıp izlenebilmesini mümkün kılıyor. Yani bu CI/CD pipeline'ı sayesinde, test süreçlerimiz tamamen otomatize olmuş oluyor ve her şey düzgün bir şekilde izlenebiliyor.
+
 ## 🤝 Katkıda Bulunma
 1. 🍴 Fork yapın
 2. 🌿 Feature branch oluşturun

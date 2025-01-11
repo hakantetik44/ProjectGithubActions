@@ -24,6 +24,7 @@ test:
   stage: test
   before_script:
     - apt-get update && apt-get install -y jq
+
     - echo "🔍 Selenium Grid bağlantısı kontrol ediliyor..."
     - |
       timeout 60s bash -c 'until curl -s -f "http://selenium-chrome:4444/wd/hub/status" > /dev/null; do echo "⏳ Selenium Grid başlatılıyor..."; sleep 2; done'
