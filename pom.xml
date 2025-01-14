@@ -89,7 +89,7 @@
                     </argLine>
                     <systemPropertyVariables>
                         <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
-                        <cucumber.plugin>pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json</cucumber.plugin>
+                        <cucumber.plugin>pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm</cucumber.plugin>
                     </systemPropertyVariables>
                     <includes>
                         <include>**/*Runner.java</include>
@@ -111,7 +111,6 @@
                     <reportVersion>${allure.version}</reportVersion>
                     <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
                     <reportDirectory>${project.build.directory}/allure-report</reportDirectory>
-                    <allureDownloadUrl>https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/${allure.version}/allure-commandline-${allure.version}.zip</allureDownloadUrl>
                 </configuration>
             </plugin>
         </plugins>

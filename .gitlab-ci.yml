@@ -51,6 +51,9 @@ test:
         usage:target/cucumber-reports/usage.json,\
         junit:target/cucumber-reports/junit.xml,\
         message:target/cucumber-reports/messages.ndjson" \
+        -Dallure.results.directory=target/allure-results \
+        -Dallure.link.issue.pattern=https://gitlab.com/fildisili88/AmazonProject/-/issues/{} \
+        -Dallure.link.tms.pattern=https://gitlab.com/fildisili88/AmazonProject/-/issues/{} \
         -Dcucumber.execution.dry-run=false \
         -Dcucumber.execution.strict=true \
         -Dcucumber.execution.parallel.enabled=false \
