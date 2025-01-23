@@ -26,20 +26,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # Chrome kurulumu
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@v1
-        
-    # Chrome driver kurulumu
-    - name: Setup ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-      
-    # Chrome servisi başlatma
-    - name: Start Chrome Driver
+    # Chrome ve ChromeDriver kurulumu
+    - name: Install Chrome and ChromeDriver
       run: |
-        export DISPLAY=:99
-        chromedriver --url-base=/wd/hub &
-        sudo Xvfb -ac :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1)
+        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+        wget -N "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        unzip -o chromedriver_linux64.zip
+        chmod +x chromedriver
+        sudo mv chromedriver /usr/local/bin/
+        echo "Chrome version: $(google-chrome --version)"
+        echo "ChromeDriver version: $(chromedriver --version)"
+
+    # X virtual framebuffer
+    - name: Start Xvfb
+      run: |
+        sudo apt-get install -y xvfb
+        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        echo "export DISPLAY=:99" >> ~/.bashrc
+        source ~/.bashrc
         
     - name: Cache Maven packages
       uses: actions/cache@v4
@@ -53,12 +60,15 @@ jobs:
       run: mkdir -p target/allure-results
     
     - name: Build and Test
+      env:
+        DISPLAY: :99
       run: |
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
         -Dallure.report.directory=target/site/allure-maven-plugin \
-        -Dwebdriver.chrome.driver=$(which chromedriver)
+        -Dwebdriver.chrome.driver=/usr/local/bin/chromedriver \
+        -Dselenium.browser=chrome
       
     - name: Get Allure history
       run: |
