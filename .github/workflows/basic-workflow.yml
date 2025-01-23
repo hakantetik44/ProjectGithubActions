@@ -37,24 +37,21 @@ jobs:
     - name: Build with Maven
       run: mvn -B package --file pom.xml -DskipTests
     
-    - name: Run Tests with Allure
+    - name: Run Tests and Generate Allure Results
       run: |
-        mvn clean test -X -e -Dmaven.test.failure.ignore=true
-        cat target/surefire-reports/*.txt || echo "No test reports found"
-      
+        mvn clean test -X -e -Dmaven.test.failure.ignore=true -Dallure.results.directory=target/allure-results
+        
     - name: List Generated Files
       run: |
         echo "Listing target directory:"
         ls -la target/
-        echo "Listing site directory:"
-        ls -la target/site/ || echo "Site directory not found"
         echo "Listing allure-results:"
         ls -la target/allure-results/ || echo "Allure results not found"
       
     - name: Generate Allure Report
       if: always()
       run: |
-        mvn allure:report -X
+        mvn allure:report -X -Dallure.results.directory=target/allure-results
         echo "Checking Allure Report directory:"
         ls -la target/site/allure-maven-plugin/ || echo "Allure report not found"
       
@@ -87,6 +84,15 @@ jobs:
           cat "$file"
           echo
         done
+
+    # Allure sonuçlarını kontrol et
+    - name: Check Allure Results
+      if: always()
+      run: |
+        echo "=== Allure Results ==="
+        ls -R target/allure-results/ || echo "No Allure results found"
+        echo "=== Allure Report ==="
+        ls -R target/site/allure-maven-plugin/ || echo "No Allure report found"
     
   deploy:
     needs: build-and-test
