@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
     
     steps:
     - uses: actions/checkout@v4
@@ -37,19 +40,20 @@ jobs:
       if: always()
       run: mvn allure:report
       
-    - name: Store Allure Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-report
-        path: target/site/allure-maven-plugin
-    
     - name: Store Test Results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-results
         path: target/surefire-reports
+
+    - name: Deploy Allure Report to GitHub Pages
+      if: always()
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: target/site/allure-maven-plugin
+        publish_branch: gh-pages
     
     - name: Deploy
       if: github.ref == 'refs/heads/main' && success()
