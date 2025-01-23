@@ -44,20 +44,13 @@ jobs:
       if: always()
       run: mvn allure:report
       
-    # Allure history'yi kopyala
-    - name: Copy Allure history
-      if: always()
-      run: |
-        mkdir -p target/site/allure-maven-plugin/history
-        cp -R .allure/allure-results/history/* target/site/allure-maven-plugin/history/ || true
-      
-    - name: Store Test Reports
-      if: always()
-      uses: actions/upload-artifact@v4
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload Pages Artifact
+      uses: actions/upload-pages-artifact@v3
       with:
-        name: test-reports
         path: target/site/allure-maven-plugin/
-        retention-days: 30
 
     - name: Store Test Results
       if: always()
@@ -67,35 +60,17 @@ jobs:
         path: target/surefire-reports
         retention-days: 30
     
-    - name: Deploy
-      if: github.ref == 'refs/heads/main' && success()
-      run: |
-        echo "Deploying to production..."
-      env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-
-  pages:
+  deploy:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+    runs-on: ubuntu-latest
     steps:
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Download Test Reports
-        uses: actions/download-artifact@v4
-        with:
-          name: test-reports
-          path: ./_site
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./_site
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4 
