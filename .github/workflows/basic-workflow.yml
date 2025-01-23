@@ -38,26 +38,43 @@ jobs:
       run: mvn -B package --file pom.xml -DskipTests
     
     - name: Run Tests with Allure
-      run: mvn test -Dmaven.test.failure.ignore=true
+      run: |
+        mvn clean test
+        mvn allure:report
+      
+    - name: List Generated Files
+      run: |
+        echo "Listing target directory:"
+        ls -la target/
+        echo "Listing site directory:"
+        ls -la target/site/ || echo "Site directory not found"
+        echo "Listing allure-results:"
+        ls -la target/allure-results/ || echo "Allure results not found"
       
     - name: Generate Allure Report
       if: always()
-      run: mvn allure:report
+      run: |
+        mvn allure:report
+        echo "Checking Allure Report directory:"
+        ls -la target/site/allure-maven-plugin/ || echo "Allure report not found"
       
     - name: Setup Pages
       uses: actions/configure-pages@v4
 
     - name: Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
+      if: always()
       with:
-        path: target/site/allure-maven-plugin/
+        path: target/site/allure-maven-plugin
 
     - name: Store Test Results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-results
-        path: target/surefire-reports
+        path: |
+          target/surefire-reports
+          target/allure-results
         retention-days: 30
     
   deploy:
