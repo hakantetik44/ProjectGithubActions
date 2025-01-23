@@ -6,12 +6,15 @@ on:
   pull_request:
     branches: [ main ]
 
+# Tüm workflow için permissions ekleyelim
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
     
     steps:
     - uses: actions/checkout@v4
@@ -57,14 +60,6 @@ jobs:
         name: test-results
         path: target/surefire-reports
         retention-days: 30
-
-    - name: Deploy Allure Report to GitHub Pages
-      if: always()
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: target/site/allure-maven-plugin
-        publish_branch: gh-pages
     
     - name: Deploy
       if: github.ref == 'refs/heads/main' && success()
@@ -73,12 +68,9 @@ jobs:
       env:
         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
-  pages:
+  deploy-pages:
     needs: build-and-test
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -91,6 +83,8 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true  # Pages'i otomatik olarak etkinleştir
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
