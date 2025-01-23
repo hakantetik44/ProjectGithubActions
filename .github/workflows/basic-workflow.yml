@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  checks: write # Test sonuçları için
 
 jobs:
   build-and-test:
@@ -43,14 +44,19 @@ jobs:
       if: always()
       run: mvn allure:report
       
+    # Allure history'yi kopyala
+    - name: Copy Allure history
+      if: always()
+      run: |
+        mkdir -p target/site/allure-maven-plugin/history
+        cp -R .allure/allure-results/history/* target/site/allure-maven-plugin/history/ || true
+      
     - name: Store Test Reports
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-reports
-        path: |
-          target/site/allure-maven-plugin/
-          target/cucumber-reports/
+        path: target/site/allure-maven-plugin/
         retention-days: 30
 
     - name: Store Test Results
@@ -68,28 +74,27 @@ jobs:
       env:
         DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
-  deploy-pages:
+  pages:
     needs: build-and-test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    
     steps:
-      - name: Download artifact
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Download Test Reports
         uses: actions/download-artifact@v4
         with:
           name: test-reports
-          path: ./reports
+          path: ./_site
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-        with:
-          enablement: true  # Pages'i otomatik olarak etkinleştir
-
-      - name: Upload artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './reports'
+          path: ./_site
 
       - name: Deploy to GitHub Pages
         id: deployment
