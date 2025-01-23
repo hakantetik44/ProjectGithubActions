@@ -35,17 +35,17 @@ jobs:
     # ChromeDriver kurulumu
     - name: Setup ChromeDriver
       uses: nanasess/setup-chromedriver@v2
-      with:
-        # Chrome sürümüyle eşleşen ChromeDriver sürümü
-        chromedriver-version: '120.0.6099.109'
     
     # Chrome servisi başlatma
     - name: Start Chrome Driver
       run: |
         export DISPLAY=:99
         sudo Xvfb -ac :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        echo "ChromeDriver Version:"
         chromedriver --version
+        echo "Chrome Version:"
         google-chrome --version
+        chromedriver --port=4444 &
         
     - name: Cache Maven packages
       uses: actions/cache@v4
@@ -61,11 +61,13 @@ jobs:
     - name: Build and Test
       env:
         DISPLAY: :99
+        SELENIUM_REMOTE_URL: "http://localhost:4444"
       run: |
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
-        -Dallure.report.directory=target/site/allure-maven-plugin
+        -Dallure.report.directory=target/site/allure-maven-plugin \
+        -Dwebdriver.chrome.driver=$(which chromedriver)
       
     - name: Get Allure history
       run: |
