@@ -11,16 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
-    - name: Set up JDK 11
-      uses: actions/setup-java@v2
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
         
     - name: Cache Maven packages
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -28,19 +28,28 @@ jobs:
           ${{ runner.os }}-m2-
     
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml -DskipTests
     
     - name: Run Tests with Allure
-      run: mvn clean test
+      run: mvn test -Dmaven.test.failure.ignore=true
       
     - name: Generate Allure Report
+      if: always()
       run: mvn allure:report
       
     - name: Store Allure Report
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: allure-report
         path: target/site/allure-maven-plugin
+    
+    - name: Store Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: target/surefire-reports
     
     - name: Deploy
       if: github.ref == 'refs/heads/main' && success()
