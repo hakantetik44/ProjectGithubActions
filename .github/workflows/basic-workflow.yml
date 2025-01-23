@@ -40,12 +40,23 @@ jobs:
       if: always()
       run: mvn allure:report
       
+    - name: Store Test Reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports
+        path: |
+          target/site/allure-maven-plugin/
+          target/cucumber-reports/
+        retention-days: 30
+
     - name: Store Test Results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-results
         path: target/surefire-reports
+        retention-days: 30
 
     - name: Deploy Allure Report to GitHub Pages
       if: always()
@@ -60,4 +71,32 @@ jobs:
       run: |
         echo "Deploying to production..."
       env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} 
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+
+  pages:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-reports
+          path: ./reports
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './reports'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 
