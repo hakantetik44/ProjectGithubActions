@@ -246,3 +246,4 @@ Bu yapı, testlerimizin sorunsuz bir şekilde çalışmasını sağlıyor, ayrı
   
   Made with ❤️ by [Your Name]
 </div>
+# AmazonGitlabCI-CD
