@@ -26,6 +26,15 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    # Selenium Grid kurulumu
+    - name: Setup Selenium Grid
+      run: |
+        wget https://github.com/SeleniumHQ/selenium/releases/download/selenium-4.16.0/selenium-server-4.16.1.jar
+        java -jar selenium-server-4.16.1.jar standalone &
+        echo "Waiting for Selenium Grid to start..."
+        sleep 10
+        curl http://localhost:4444/status
+
     # Chrome kurulumu
     - name: Setup Chrome
       uses: browser-actions/setup-chrome@v1
@@ -36,16 +45,14 @@ jobs:
     - name: Setup ChromeDriver
       uses: nanasess/setup-chromedriver@v2
     
-    # Chrome servisi başlatma
-    - name: Start Chrome Driver
+    # X virtual framebuffer
+    - name: Start Xvfb
       run: |
-        export DISPLAY=:99
-        sudo Xvfb -ac :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-        echo "ChromeDriver Version:"
-        chromedriver --version
-        echo "Chrome Version:"
-        google-chrome --version
-        chromedriver --port=4444 &
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        echo "export DISPLAY=:99" >> ~/.bashrc
+        source ~/.bashrc
         
     - name: Cache Maven packages
       uses: actions/cache@v4
@@ -63,11 +70,14 @@ jobs:
         DISPLAY: :99
         SELENIUM_REMOTE_URL: "http://localhost:4444"
       run: |
+        echo "Checking Selenium Grid status..."
+        curl -v http://localhost:4444/status
+        echo "Running tests..."
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
         -Dallure.report.directory=target/site/allure-maven-plugin \
-        -Dwebdriver.chrome.driver=$(which chromedriver)
+        -Dselenium.grid.url=http://localhost:4444/wd/hub
       
     - name: Get Allure history
       run: |
