@@ -26,30 +26,27 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # Selenium Grid kurulumu
-    - name: Setup Selenium Grid
+    # Chrome ve ChromeDriver kurulumu
+    - name: Install Chrome and ChromeDriver
       run: |
-        wget https://github.com/SeleniumHQ/selenium/releases/download/selenium-4.16.0/selenium-server-4.16.1.jar
-        java -jar selenium-server-4.16.1.jar standalone &
-        echo "Waiting for Selenium Grid to start..."
-        sleep 10
-        curl http://localhost:4444/status
-
-    # Chrome kurulumu
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@v1
-      with:
-        chrome-version: stable
-    
-    # ChromeDriver kurulumu
-    - name: Setup ChromeDriver
-      uses: nanasess/setup-chromedriver@v2
-    
-    # X virtual framebuffer
-    - name: Start Xvfb
-      run: |
+        # Chrome kurulumu
         sudo apt-get update
-        sudo apt-get install -y xvfb
+        sudo apt-get install -y google-chrome-stable xvfb
+        
+        # Chrome versiyonunu al
+        CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
+        echo "Chrome Version: $CHROME_VERSION"
+        
+        # ChromeDriver kur
+        wget -N "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.109/linux64/chromedriver-linux64.zip"
+        unzip -o chromedriver-linux64.zip
+        chmod +x chromedriver-linux64/chromedriver
+        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+        chromedriver --version
+
+    # Display ayarı
+    - name: Setup Display
+      run: |
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
         echo "export DISPLAY=:99" >> ~/.bashrc
         source ~/.bashrc
@@ -68,16 +65,12 @@ jobs:
     - name: Build and Test
       env:
         DISPLAY: :99
-        SELENIUM_REMOTE_URL: "http://localhost:4444"
       run: |
-        echo "Checking Selenium Grid status..."
-        curl -v http://localhost:4444/status
-        echo "Running tests..."
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
         -Dallure.report.directory=target/site/allure-maven-plugin \
-        -Dselenium.grid.url=http://localhost:4444/wd/hub
+        -Dwebdriver.chrome.driver=/usr/local/bin/chromedriver
       
     - name: Get Allure history
       run: |
