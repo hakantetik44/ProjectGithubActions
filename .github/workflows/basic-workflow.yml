@@ -34,27 +34,36 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-m2-
     
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml -DskipTests
+    - name: Create Allure Results Directory
+      run: mkdir -p target/allure-results
     
-    - name: Run Tests and Generate Allure Results
+    - name: Build and Test
       run: |
-        mvn clean test -X -e -Dmaven.test.failure.ignore=true -Dallure.results.directory=target/allure-results
-        
-    - name: List Generated Files
+        mvn clean test \
+        -Dmaven.test.failure.ignore=true \
+        -Dallure.results.directory=target/allure-results \
+        -Dallure.report.directory=target/site/allure-maven-plugin
+      
+    - name: Get Allure history
       run: |
-        echo "Listing target directory:"
-        ls -la target/
-        echo "Listing allure-results:"
-        ls -la target/allure-results/ || echo "Allure results not found"
+        mkdir -p target/allure-results/history
+        mkdir -p target/site/allure-maven-plugin/history
       
     - name: Generate Allure Report
-      if: always()
       run: |
-        mvn allure:report -X -Dallure.results.directory=target/allure-results
-        echo "Checking Allure Report directory:"
-        ls -la target/site/allure-maven-plugin/ || echo "Allure report not found"
+        mvn allure:report \
+        -Dallure.results.directory=target/allure-results \
+        -Dallure.report.directory=target/site/allure-maven-plugin
       
+    - name: List Directories
+      run: |
+        echo "=== Target Directory ==="
+        ls -la target/
+        echo "=== Allure Results ==="
+        ls -la target/allure-results/ || echo "No Allure results"
+        echo "=== Allure Report ==="
+        ls -la target/site/allure-maven-plugin/ || echo "No Allure report"
+
     - name: Setup Pages
       uses: actions/configure-pages@v4
 
