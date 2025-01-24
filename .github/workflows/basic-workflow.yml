@@ -47,7 +47,8 @@ jobs:
         
         # ChromeDriver'ı başlat
         chromedriver --version
-        which chromedriver
+        CHROME_DRIVER_PATH=$(which chromedriver)
+        echo "CHROME_DRIVER_PATH=${CHROME_DRIVER_PATH}" >> $GITHUB_ENV
         
     - name: Cache Maven packages
       uses: actions/cache@v4
@@ -63,22 +64,20 @@ jobs:
     - name: Build and Test
       env:
         DISPLAY: :99
-        CHROME_DRIVER: $(which chromedriver)
       run: |
-        echo "Using ChromeDriver at: $CHROME_DRIVER"
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
         -Dallure.report.directory=target/site/allure-maven-plugin \
-        -Dwebdriver.chrome.driver=$CHROME_DRIVER \
+        -Dwebdriver.chrome.driver="${CHROME_DRIVER_PATH}" \
         -Dselenium.browser=chrome \
         -Dselenium.browser.headless=true
 
-    - name: Download Allure CLI
+    - name: Download and Setup Allure
       run: |
-        curl -o allure-2.24.0.tgz -OLs https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
-        tar -zxvf allure-2.24.0.tgz -C /tmp
-        sudo ln -s /tmp/allure-2.24.0/bin/allure /usr/local/bin/allure
+        wget https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
         allure --version
 
     - name: Generate Allure Report
