@@ -7,8 +7,8 @@ import io.qameta.allure.Allure;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.remote.RemoteWebDriver;
 import java.io.ByteArrayInputStream;
 import java.net.URL;
 import java.time.Duration;
@@ -21,19 +21,19 @@ public class Hooks {
     public void setUp(Scenario scenario) {
         try {
             ChromeOptions options = new ChromeOptions();
-            options.addArguments("--headless", "--no-sandbox", "--disable-dev-shm-usage",
-                               "--disable-gpu", "--window-size=1920,1080", "--remote-allow-origins=*");
-            options.setCapability("acceptInsecureCerts", true);
+            options.addArguments("--headless");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--disable-gpu");
+            options.addArguments("--window-size=1920,1080");
+            options.addArguments("--remote-allow-origins=*");
             
-            String seleniumUrl = System.getProperty("selenium.grid.url", "http://selenium-chrome:4444/wd/hub");
-            driver = new RemoteWebDriver(new URL(seleniumUrl), options);
-            
+            WebDriver driver = new ChromeDriver(options);
             driver.manage().window().maximize();
-            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
-            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
-            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(15));
             
-            Allure.addAttachment("Browser Session", seleniumUrl);
+            Allure.addAttachment("Browser Session", "http://localhost:4444/wd/hub");
+            DriverManager.setDriver(driver);
         } catch (Exception e) {
             Allure.addAttachment("Setup Error", e.getMessage());
             throw new RuntimeException(e);
@@ -42,6 +42,7 @@ public class Hooks {
 
     @After
     public void tearDown(Scenario scenario) {
+        WebDriver driver = DriverManager.getDriver();
         if (driver != null) {
             try {
                 if (scenario.isFailed()) {
@@ -55,6 +56,7 @@ public class Hooks {
                 Allure.addAttachment("Teardown Error", e.getMessage());
             } finally {
                 driver.quit();
+                DriverManager.removeDriver();
             }
         }
     }
