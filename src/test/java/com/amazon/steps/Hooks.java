@@ -9,12 +9,11 @@ import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import com.amazon.utils.DriverManager;
 import java.io.ByteArrayInputStream;
-import java.net.URL;
 import java.time.Duration;
 
 public class Hooks {
-    private static WebDriver driver;
     private static final Logger logger = LogManager.getLogger(Hooks.class);
 
     @Before
@@ -32,7 +31,7 @@ public class Hooks {
             driver.manage().window().maximize();
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(15));
             
-            Allure.addAttachment("Browser Session", "http://localhost:4444/wd/hub");
+            Allure.addAttachment("Browser Session", "Local Chrome Driver");
             DriverManager.setDriver(driver);
         } catch (Exception e) {
             Allure.addAttachment("Setup Error", e.getMessage());
@@ -59,9 +58,5 @@ public class Hooks {
                 DriverManager.removeDriver();
             }
         }
-    }
-
-    public static WebDriver getDriver() {
-        return driver;
     }
 }
