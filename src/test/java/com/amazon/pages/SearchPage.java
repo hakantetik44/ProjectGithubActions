@@ -6,6 +6,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import java.util.List;
+import java.io.ByteArrayInputStream;
+import io.qameta.allure.Allure;
 
 public class SearchPage {
     private WebDriver driver;
@@ -29,6 +31,15 @@ public class SearchPage {
         ".nav-search-submit input",
         "//input[@value='Go']",
         "//input[@type='submit']"
+    };
+
+    private final String[] SEARCH_RESULTS_SELECTORS = {
+        ".s-result-list .s-result-item",
+        ".s-search-results .s-result-item",
+        "[data-component-type='s-search-result']",
+        ".sg-row .s-result-item",
+        "//div[contains(@class, 's-result-item')]",
+        "//div[contains(@data-component-type, 's-search-result')]"
     };
 
     public SearchPage(WebDriver driver) {
@@ -134,28 +145,78 @@ public class SearchPage {
 
     public boolean areSearchResultsDisplayed() {
         try {
+            System.out.println("Checking search results...");
             wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
-            Thread.sleep(2000); // Kısa bir bekleme
+            Thread.sleep(3000); // Bekleme süresini artırdık
 
-            // Farklı sonuç göstergelerini kontrol et
-            return wait.until(driver -> {
+            // URL'i logla
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Current URL: " + currentUrl);
+
+            // Sayfa kaynağını logla
+            String pageSource = driver.getPageSource();
+            System.out.println("Page source length: " + pageSource.length());
+
+            for (String selector : SEARCH_RESULTS_SELECTORS) {
                 try {
-                    // URL kontrolü
-                    String currentUrl = driver.getCurrentUrl();
-                    if (currentUrl.contains("/s?k=") || currentUrl.contains("/search")) {
-                        return true;
+                    List<WebElement> results;
+                    if (selector.startsWith("//")) {
+                        results = driver.findElements(By.xpath(selector));
+                    } else {
+                        results = driver.findElements(By.cssSelector(selector));
                     }
 
-                    // Sonuç elementlerini kontrol et
-                    List<WebElement> results = driver.findElements(By.cssSelector(
-                        ".s-result-list .s-result-item, .s-search-results .s-result-item"));
-                    return !results.isEmpty();
+                    if (!results.isEmpty()) {
+                        System.out.println("Found " + results.size() + " results with selector: " + selector);
+                        return true;
+                    }
                 } catch (Exception e) {
-                    return false;
+                    System.out.println("Failed with selector " + selector + ": " + e.getMessage());
                 }
-            });
+            }
+
+            // Alternatif kontroller
+            try {
+                // URL kontrolü
+                if (currentUrl.contains("/s?k=") || currentUrl.contains("/search")) {
+                    System.out.println("Search results detected from URL pattern");
+                    return true;
+                }
+
+                // Başlık kontrolü
+                String title = driver.getTitle().toLowerCase();
+                if (title.contains("search") || title.contains("results")) {
+                    System.out.println("Search results detected from page title");
+                    return true;
+                }
+
+                // Genel sayfa içeriği kontrolü
+                String bodyText = driver.findElement(By.tagName("body")).getText();
+                if (bodyText.contains("results for") || bodyText.contains("showing results for")) {
+                    System.out.println("Search results detected from page content");
+                    return true;
+                }
+
+            } catch (Exception e) {
+                System.out.println("Error in alternative checks: " + e.getMessage());
+            }
+
+            // Ekran görüntüsü al
+            try {
+                TakesScreenshot ts = (TakesScreenshot) driver;
+                byte[] screenshot = ts.getScreenshotAs(OutputType.BYTES);
+                // Allure raporu için ekran görüntüsünü ekle
+                Allure.addAttachment("Search Results Page", new ByteArrayInputStream(screenshot));
+            } catch (Exception e) {
+                System.out.println("Failed to take screenshot: " + e.getMessage());
+            }
+
+            System.out.println("No search results found with any selector");
+            return false;
+
         } catch (Exception e) {
             System.out.println("Error checking search results: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

@@ -12,6 +12,8 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import com.amazon.utils.DriverManager;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Hooks {
     private static final Logger logger = LogManager.getLogger(Hooks.class);
@@ -20,7 +22,7 @@ public class Hooks {
     public void setUp(Scenario scenario) {
         try {
             ChromeOptions options = new ChromeOptions();
-            options.addArguments("--headless");
+            options.addArguments("--headless=new");
             options.addArguments("--no-sandbox");
             options.addArguments("--disable-dev-shm-usage");
             options.addArguments("--disable-gpu");
@@ -28,14 +30,25 @@ public class Hooks {
             options.addArguments("--remote-allow-origins=*");
             options.addArguments("--disable-blink-features=AutomationControlled");
             options.addArguments("--disable-extensions");
+            options.addArguments("--lang=en-US");
             
-            // User agent string'i ekleyelim
+            options.addArguments("--start-maximized");
+            options.addArguments("--ignore-certificate-errors");
+            options.addArguments("--allow-running-insecure-content");
+            options.addArguments("--disable-popup-blocking");
+            options.addArguments("--disable-notifications");
+            
             options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            
+            Map<String, Object> prefs = new HashMap<>();
+            prefs.put("profile.default_content_setting_values.notifications", 2);
+            options.setExperimentalOption("prefs", prefs);
             
             WebDriver driver = new ChromeDriver(options);
             driver.manage().window().maximize();
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+            driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
             
             Allure.addAttachment("Browser Session", "Local Chrome Driver");
             DriverManager.setDriver(driver);
