@@ -1,46 +1,47 @@
 package com.amazon.steps;
 
-import com.amazon.pages.HomePage;
-import com.amazon.pages.SearchResultPage;
 import io.cucumber.java.en.*;
-import org.junit.Assert;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import com.amazon.pages.SearchPage;
+import com.amazon.utils.DriverManager;
+import java.time.Duration;
+import static org.junit.Assert.*;
 
 public class SearchSteps {
     private WebDriver driver;
-    private HomePage homePage;
-    private SearchResultPage searchResultPage;
+    private SearchPage searchPage;
+    private WebDriverWait wait;
 
     public SearchSteps() {
-        this.driver = Hooks.getDriver();
-        this.homePage = new HomePage(driver);
-        this.searchResultPage = new SearchResultPage(driver);
+        this.driver = DriverManager.getDriver();
+        this.searchPage = new SearchPage(driver);
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
     @Given("Kullanici Amazon ana sayfasina gider")
-    public void kullaniciAmazonAnaSayfasinaGider() {
-        homePage.navigateToHomePage();
+    public void kullanici_amazon_ana_sayfasina_gider() {
+        driver.get("https://www.amazon.com");
     }
 
     @When("Kullanici arama kutusuna {string} yazar")
-    public void kullaniciAramaKutusunaYazar(String searchText) {
-        homePage.enterSearchText(searchText);
+    public void kullanici_arama_kutusuna_yazar(String searchTerm) {
+        searchPage.enterSearchTerm(searchTerm);
     }
 
-    @And("Kullanici arama butonuna tiklar")
-    public void kullaniciAramaButonunaTiklar() {
-        homePage.clickSearchButton();
+    @When("Kullanici arama butonuna tiklar")
+    public void kullanici_arama_butonuna_tiklar() {
+        searchPage.clickSearchButton();
     }
 
     @Then("Kullanici arama sonuclarini görmeli")
-    public void kullaniciAramaSonuclariniGormeli() {
-        Assert.assertTrue("Arama sonuçları görüntülenemiyor", 
-            searchResultPage.areSearchResultsDisplayed());
+    public void kullanici_arama_sonuclarini_gormeli() {
+        assertTrue("Arama sonuçları görüntülenemedi", searchPage.areSearchResultsDisplayed());
     }
 
-    @And("Sonuclarda {string} kelimesi bulunmali")
-    public void sonuclardaKelimesiBulunmali(String keyword) {
-        Assert.assertTrue("Aranan kelime sonuçlarda bulunamadı", 
-            searchResultPage.isSearchKeywordPresent(keyword));
+    @Then("Sonuclarda {string} kelimesi bulunmali")
+    public void sonuclarda_kelimesi_bulunmali(String searchTerm) {
+        assertTrue("Arama sonuçlarında '" + searchTerm + "' kelimesi bulunamadı", 
+            searchPage.doesSearchResultContain(searchTerm));
     }
 } 
