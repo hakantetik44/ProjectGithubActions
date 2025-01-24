@@ -26,30 +26,28 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    # Chrome ve ChromeDriver kurulumu
-    - name: Install Chrome and ChromeDriver
+    # Chrome kurulumu
+    - name: Setup Chrome
+      uses: browser-actions/setup-chrome@v1
+      with:
+        chrome-version: stable
+    
+    # ChromeDriver kurulumu
+    - name: Setup ChromeDriver
+      uses: nanasess/setup-chromedriver@v2
+    
+    # Display ve ChromeDriver ayarları
+    - name: Setup Test Environment
       run: |
-        # Chrome kurulumu
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable xvfb
-        
-        # Chrome versiyonunu al
-        CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
-        echo "Chrome Version: $CHROME_VERSION"
-        
-        # ChromeDriver kur
-        wget -N "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.109/linux64/chromedriver-linux64.zip"
-        unzip -o chromedriver-linux64.zip
-        chmod +x chromedriver-linux64/chromedriver
-        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-        chromedriver --version
-
-    # Display ayarı
-    - name: Setup Display
-      run: |
+        # Display ayarı
+        sudo apt-get install -y xvfb
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
         echo "export DISPLAY=:99" >> ~/.bashrc
         source ~/.bashrc
+        
+        # ChromeDriver'ı başlat
+        chromedriver --version
+        which chromedriver
         
     - name: Cache Maven packages
       uses: actions/cache@v4
@@ -65,12 +63,16 @@ jobs:
     - name: Build and Test
       env:
         DISPLAY: :99
+        CHROME_DRIVER: $(which chromedriver)
       run: |
+        echo "Using ChromeDriver at: $CHROME_DRIVER"
         mvn clean test \
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results \
         -Dallure.report.directory=target/site/allure-maven-plugin \
-        -Dwebdriver.chrome.driver=/usr/local/bin/chromedriver
+        -Dwebdriver.chrome.driver=$CHROME_DRIVER \
+        -Dselenium.browser=chrome \
+        -Dselenium.browser.headless=true
 
     - name: Download Allure CLI
       run: |
