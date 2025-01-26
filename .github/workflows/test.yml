@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Her gece yarısı çalışır
   workflow_dispatch:  # Manuel tetikleme için
+  create:  # Yeni branch oluşturulduğunda
+    branches:
+      - '**'
 
 # Top level permissions for all jobs
 permissions:
@@ -28,6 +31,8 @@ permissions:
 env:
   GITHUB_PAGES: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  DEPLOY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.head_ref || github.ref_name }}
 
 jobs:
   setup:
@@ -256,17 +261,9 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Sadece main branch için
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    # Specific permissions for this job
-    permissions:
-      pages: write
-      id-token: write
-      contents: write
-      deployments: write
+      url: ${{ steps.deployment.outputs.page_url }}/${{ env.BRANCH_NAME }}
     
     steps:
     - name: 🔄 Checkout Repository
@@ -285,6 +282,11 @@ jobs:
         enablement: true
         token: ${{ secrets.GITHUB_TOKEN }}
         
+    - name: 📂 Branch Klasörü Oluştur
+      run: |
+        mkdir -p target/site/allure-maven-plugin/${{ env.BRANCH_NAME }}
+        cp -r target/site/allure-maven-plugin/* target/site/allure-maven-plugin/${{ env.BRANCH_NAME }}/
+        
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
       with:
@@ -295,17 +297,9 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Sadece main branch için
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    # Specific permissions for this job
-    permissions:
-      pages: write
-      id-token: write
-      deployments: write
-      statuses: write
+      url: ${{ steps.deployment.outputs.page_url }}/${{ env.BRANCH_NAME }}
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
@@ -316,7 +310,7 @@ jobs:
       if: success()
       run: |
         echo "Deployment successful!"
-        echo "Report URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+        echo "Report URL: ${{ env.DEPLOY_URL }}"
         
     - name: ❌ Deployment Status
       if: failure()
@@ -325,6 +319,7 @@ jobs:
         echo "Error details:"
         echo "- Job status: ${{ job.status }}"
         echo "- Previous job status: ${{ needs.pages.result }}"
+        echo "- Branch: ${{ env.BRANCH_NAME }}"
 
   notify:
     name: 📢 Bildirim Gönderme
@@ -337,17 +332,15 @@ jobs:
       run: |
         if [[ "${{ needs.test.result }}" == "success" ]]; then
           echo "## ✅ Testler Başarıyla Tamamlandı" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: ${{ env.BRANCH_NAME }}" >> $GITHUB_STEP_SUMMARY
         else
           echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: ${{ env.BRANCH_NAME }}" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [[ "${{ github.ref == 'refs/heads/main' }}" == "true" ]]; then
-          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-            echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
-            echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
-          fi
+        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+          echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [Allure Raporu](${{ env.DEPLOY_URL }})" >> $GITHUB_STEP_SUMMARY
         else
-          echo "## ℹ️ Rapor Yayınlanmadı (Sadece main branch'te yayınlanır)" >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
         fi 
