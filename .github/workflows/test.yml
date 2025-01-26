@@ -32,7 +32,7 @@ env:
   GITHUB_PAGES: true
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-  DEPLOY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.head_ref || github.ref_name }}
+  DEPLOY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
 
 jobs:
   setup:
@@ -261,9 +261,13 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      deployments: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}/${{ env.BRANCH_NAME }}
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: 🔄 Checkout Repository
@@ -280,12 +284,20 @@ jobs:
       uses: actions/configure-pages@v4
       with:
         enablement: true
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
+    
     - name: 📂 Branch Klasörü Oluştur
       run: |
-        mkdir -p target/site/allure-maven-plugin/${{ env.BRANCH_NAME }}
-        cp -r target/site/allure-maven-plugin/* target/site/allure-maven-plugin/${{ env.BRANCH_NAME }}/
+        mkdir -p target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}
+        cp -r target/site/allure-maven-plugin/* target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}/
+        # Ana dizinde index.html oluştur
+        echo "<html><head><title>Test Reports</title></head><body>" > target/site/allure-maven-plugin/index.html
+        echo "<h1>Test Reports for All Branches</h1>" >> target/site/allure-maven-plugin/index.html
+        echo "<ul>" >> target/site/allure-maven-plugin/index.html
+        for branch in target/site/allure-maven-plugin/branches/*; do
+          branch_name=$(basename "$branch")
+          echo "<li><a href='branches/$branch_name'>$branch_name</a></li>" >> target/site/allure-maven-plugin/index.html
+        done
+        echo "</ul></body></html>" >> target/site/allure-maven-plugin/index.html
         
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
@@ -297,9 +309,13 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+      deployments: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}/${{ env.BRANCH_NAME }}
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
@@ -310,7 +326,8 @@ jobs:
       if: success()
       run: |
         echo "Deployment successful!"
-        echo "Report URL: ${{ env.DEPLOY_URL }}"
+        echo "Main Report URL: ${{ env.DEPLOY_URL }}"
+        echo "Branch Report URL: ${{ env.DEPLOY_URL }}/branches/${{ env.BRANCH_NAME }}"
         
     - name: ❌ Deployment Status
       if: failure()
@@ -340,7 +357,8 @@ jobs:
         
         if [[ "${{ needs.deploy.result }}" == "success" ]]; then
           echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
-          echo "📊 [Allure Raporu](${{ env.DEPLOY_URL }})" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [Ana Rapor](${{ env.DEPLOY_URL }})" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [Branch Raporu](${{ env.DEPLOY_URL }}/branches/${{ env.BRANCH_NAME }})" >> $GITHUB_STEP_SUMMARY
         else
           echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
         fi 
