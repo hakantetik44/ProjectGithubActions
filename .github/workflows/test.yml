@@ -9,13 +9,15 @@ on:
     - cron: '0 0 * * *'  # Her gece yarısı çalışır
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
   checks: write
-  actions: read
+  actions: write
   deployments: write
   statuses: write
+  issues: write
+  pull-requests: write
 
 jobs:
   setup:
@@ -188,23 +190,42 @@ jobs:
     needs: report
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      pages: write
+      id-token: write
+      contents: write
     
     steps:
+    - uses: actions/checkout@v4
+    
+    - name: 📥 Test Raporlarını İndir
+      uses: actions/download-artifact@v4
+      with:
+        name: test-reports
+        path: target/site/allure-maven-plugin
+    
     - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
       with:
         enablement: true
-        
+        token: ${{ secrets.GITHUB_TOKEN }}
+        static_site_generator: allure
+    
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: target/site/allure-maven-plugin
+        retention-days: 30
 
   deploy:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      pages: write
+      id-token: write
+      deployments: write
     
     environment:
       name: github-pages
@@ -214,6 +235,9 @@ jobs:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifact_name: github-pages
 
   notify:
     name: 📢 Bildirim Gönderme
