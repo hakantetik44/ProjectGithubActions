@@ -66,8 +66,12 @@ public class AliExpressTest {
             homePage = new AliExpressHomePage(driver, wait);
             
             Allure.step("Dil ayarlarını yapılandır");
-            driver.get("about:blank");
-            driver.manage().addCookie(new Cookie("aep_usuc_f", "site=glo&c_tp=USD&region=US&b_locale=en_US"));
+            driver.get("https://www.aliexpress.com");
+            Cookie cookie = new Cookie.Builder("aep_usuc_f", "site=glo&c_tp=USD&region=US&b_locale=en_US")
+                .domain(".aliexpress.com")
+                .path("/")
+                .build();
+            driver.manage().addCookie(cookie);
             
             Allure.step("Ana sayfaya git");
             driver.get("https://www.aliexpress.com");

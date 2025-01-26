@@ -55,13 +55,12 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
     
-    - name: 🖥️ Test Ortamı Hazırlığı
+    - name: 🖥️ Setup Display
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb ffmpeg
+        sudo apt-get install -y xvfb
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-        echo "export DISPLAY=:99" >> ~/.bashrc
-        source ~/.bashrc
+        echo "DISPLAY=:99" >> $GITHUB_ENV
     
     - name: 🌐 Chrome Kurulumu
       uses: browser-actions/setup-chrome@latest
@@ -105,31 +104,28 @@ jobs:
         chrome --version
         which chrome
         
-    - name: 🎥 Install FFmpeg
+    - name: 🎥 Setup Video Recording
       run: |
-        sudo apt-get update
         sudo apt-get install -y ffmpeg
-        ffmpeg -version
-        
-    - name: 🎬 Start video recording
-      run: |
         mkdir -p target/videos
-        ffmpeg -f x11grab -video_size 1920x1080 -i :99 -codec:v libx264 -r 30 target/videos/test-recording.mp4 &
+        ffmpeg -y -f x11grab -video_size 1920x1080 -i :99 -codec:v libx264 -r 30 target/videos/test-recording.mp4 &
         echo $! > /tmp/ffmpeg.pid
+        sleep 3 # Wait for ffmpeg to start
         
     - name: 🧪 Run Tests
       run: |
-        export DISPLAY=:99
-        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-        sleep 5
         mvn clean test
         
-    - name: 🛑 Stop video recording
+    - name: 🛑 Stop Video Recording
       if: always()
       run: |
         if [ -f /tmp/ffmpeg.pid ]; then
-          kill -2 $(cat /tmp/ffmpeg.pid)
+          pid=$(cat /tmp/ffmpeg.pid)
+          kill -INT $pid || true
           sleep 5
+          if ps -p $pid > /dev/null; then
+            kill -KILL $pid || true
+          fi
         fi
         
     - name: 📊 Generate Allure Report
@@ -140,10 +136,12 @@ jobs:
     - name: 📦 Package Test Results
       if: always()
       run: |
-        mkdir -p target/test-results
-        cp -r target/surefire-reports target/test-results/
-        cp -r target/site/allure-maven-plugin target/test-results/allure-report
-        cp -r target/videos target/test-results/
+        mkdir -p target/test-results/videos
+        if [ -f "target/videos/test-recording.mp4" ]; then
+          cp target/videos/test-recording.mp4 target/test-results/videos/
+        fi
+        cp -r target/surefire-reports target/test-results/ || true
+        cp -r target/site/allure-maven-plugin target/test-results/allure-report || true
         
     - name: 📤 Upload Test Results
       if: always()
