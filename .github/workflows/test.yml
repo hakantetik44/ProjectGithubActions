@@ -258,8 +258,10 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
-    # Tüm branchler için deployment izni
     if: always()
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -267,12 +269,10 @@ jobs:
       actions: write
       security-events: write
       contents: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: "pages"
-      cancel-in-progress: false
+      issues: write
+      pull-requests: write
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: 🔄 Checkout Repository
@@ -286,12 +286,8 @@ jobs:
         name: test-reports
         path: target/site/allure-maven-plugin
     
-    - name: 🔧 Setup Pages
-      id: pages
+    - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
-      with:
-        enablement: true
-        static_site_generator: allure
     
     - name: 📂 Branch Klasörü Oluştur
       run: |
@@ -356,8 +352,10 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
-    # Tüm branchler için deployment izni
     if: always()
+    environment:
+      name: github-pages
+      url: ${{ needs.pages.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -365,17 +363,23 @@ jobs:
       actions: write
       security-events: write
       contents: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: "pages"
-      cancel-in-progress: false
+      issues: write
+      pull-requests: write
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+      with:
+        artifact_name: github-pages
+        preview: false
+        error_count: 0
+        
+    - name: ✅ Verify Deployment
+      if: success()
+      run: |
+        echo "Deployment successful!"
+        echo "Report URL: ${{ env.DEPLOY_URL }}/branches/${{ env.BRANCH_NAME }}"
 
   notify:
     name: 📢 Bildirim Gönderme
