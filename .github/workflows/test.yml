@@ -339,21 +339,133 @@ jobs:
           cp -r target/test-results/screenshots "target/pages/branches/$SAFE_BRANCH_NAME/"
         fi
         
-        # Branch bilgilerini JSON dosyasına kaydet
-        cat > target/pages/branches/branch-info.json << EOL
-        {
-          "lastUpdated": "$(date '+%Y-%m-%d %H:%M:%S')",
-          "currentBranch": "$SAFE_BRANCH_NAME",
-          "branches": [
-            {
-              "name": "$SAFE_BRANCH_NAME",
-              "lastUpdated": "$(date '+%Y-%m-%d %H:%M:%S')",
-              "reportUrl": "${{ env.DEPLOY_URL }}/branches/$SAFE_BRANCH_NAME",
-              "commit": "${{ github.sha }}",
-              "author": "${{ github.actor }}"
-            }
-          ]
-        }
+        # Ana sayfa oluştur
+        cat > target/pages/index.html << 'EOL'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AliExpress Test Reports</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    background: #f6f8fa;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                h1 { 
+                    color: #24292e;
+                    border-bottom: 2px solid #e1e4e8;
+                    padding-bottom: 10px;
+                }
+                .branch-list {
+                    list-style: none;
+                    padding: 0;
+                }
+                .branch-card {
+                    background: #fff;
+                    border: 1px solid #e1e4e8;
+                    border-radius: 6px;
+                    margin: 10px 0;
+                    padding: 15px;
+                    transition: all 0.2s ease;
+                }
+                .branch-card:hover {
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+                    transform: translateY(-2px);
+                }
+                .branch-card.current {
+                    border-left: 4px solid #2ea44f;
+                }
+                .branch-name {
+                    font-size: 1.2em;
+                    font-weight: 600;
+                    color: #0366d6;
+                }
+                .branch-meta {
+                    margin-top: 10px;
+                    color: #586069;
+                    font-size: 0.9em;
+                }
+                .branch-links {
+                    margin-top: 15px;
+                }
+                .branch-links a {
+                    display: inline-block;
+                    padding: 5px 12px;
+                    margin-right: 10px;
+                    background: #f1f8ff;
+                    border: 1px solid #c8e1ff;
+                    border-radius: 6px;
+                    color: #0366d6;
+                    text-decoration: none;
+                    font-size: 0.9em;
+                }
+                .branch-links a:hover {
+                    background: #e1f0ff;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🧪 AliExpress Test Reports</h1>
+                <div id="branchList">Loading branches...</div>
+                
+                <script>
+                    async function loadBranches() {
+                        try {
+                            const response = await fetch('branches/branch-info.json');
+                            const data = await response.json();
+                            
+                            const branchListHtml = data.branches.map(branch => {
+                                const isCurrent = branch.name === data.currentBranch;
+                                return `
+                                    <div class="branch-card ${isCurrent ? 'current' : ''}">
+                                        <div class="branch-name">🌿 ${branch.name}</div>
+                                        <div class="branch-meta">
+                                            👤 ${branch.author} | 
+                                            📅 ${branch.lastUpdated}
+                                        </div>
+                                        <div class="branch-links">
+                                            <a href="branches/${branch.name}/index.html">📊 View Report</a>
+                                            <a href="branches/${branch.name}/videos/test-recording.mp4">🎥 View Recording</a>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                            
+                            document.getElementById('branchList').innerHTML = branchListHtml;
+                            
+                        } catch (error) {
+                            console.error('Error loading branches:', error);
+                            document.getElementById('branchList').innerHTML = 'Error loading branch information. Please try again later.';
+                        }
+                    }
+                    
+                    loadBranches();
+                </script>
+            </div>
+        </body>
+        </html>
+        EOL
+        
+        # Branch dizini için index.html oluştur
+        cat > "target/pages/branches/$SAFE_BRANCH_NAME/index.html" << EOL
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta http-equiv="refresh" content="0;url=data/index.html">
+        </head>
+        </html>
         EOL
         
         # Debug için dizin yapısını göster
