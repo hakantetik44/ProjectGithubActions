@@ -1,3 +1,0 @@
-13:13:17.417 [main] INFO  com.amazon.steps.Hooks - Starting scenario: Kullanici Amazon'da urun arayabilmeli
-13:13:19.551 [main] INFO  com.amazon.steps.Hooks - Driver initialized successfully
-13:13:24.254 [main] INFO  com.amazon.steps.Hooks - Driver closed successfully

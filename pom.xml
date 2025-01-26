@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.amazon</groupId>
-    <artifactId>amazon-test-automation</artifactId>
+    <groupId>com.aliexpress</groupId>
+    <artifactId>aliexpress-test-automation</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -13,50 +13,40 @@
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <selenium.version>4.16.1</selenium.version>
-        <cucumber.version>7.14.0</cucumber.version>
-        <junit.version>4.13.2</junit.version>
+        <testng.version>7.8.0</testng.version>
         <allure.version>2.24.0</allure.version>
         <aspectj.version>1.9.19</aspectj.version>
         <log4j.version>2.22.0</log4j.version>
     </properties>
 
     <dependencies>
-        <!-- Selenium -->
+        <!-- Selenium WebDriver -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
             <version>${selenium.version}</version>
         </dependency>
-
-        <!-- Cucumber -->
+        
+        <!-- TestNG -->
         <dependency>
-            <groupId>io.cucumber</groupId>
-            <artifactId>cucumber-java</artifactId>
-            <version>${cucumber.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.cucumber</groupId>
-            <artifactId>cucumber-junit</artifactId>
-            <version>${cucumber.version}</version>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
         </dependency>
 
-        <!-- JUnit -->
+        <!-- WebDriverManager -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
+            <groupId>io.github.bonigarcia</groupId>
+            <artifactId>webdrivermanager</artifactId>
+            <version>5.6.3</version>
             <scope>test</scope>
         </dependency>
 
         <!-- Allure Reports -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
-            <artifactId>allure-cucumber7-jvm</artifactId>
-            <version>${allure.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.qameta.allure</groupId>
-            <artifactId>allure-junit4</artifactId>
+            <artifactId>allure-testng</artifactId>
             <version>${allure.version}</version>
             <scope>test</scope>
         </dependency>
@@ -71,6 +61,21 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
             <version>${log4j.version}</version>
+        </dependency>
+
+        <!-- SLF4J Implementation -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <!-- Selenium CDP -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-devtools-v120</artifactId>
+            <version>4.16.1</version>
         </dependency>
     </dependencies>
 
@@ -95,11 +100,7 @@
                     </argLine>
                     <systemPropertyVariables>
                         <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
-                        <cucumber.plugin>pretty,html:target/cucumber-reports/report.html,json:target/cucumber-reports/cucumber.json,io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm</cucumber.plugin>
                     </systemPropertyVariables>
-                    <includes>
-                        <include>**/*Runner.java</include>
-                    </includes>
                 </configuration>
                 <dependencies>
                     <dependency>

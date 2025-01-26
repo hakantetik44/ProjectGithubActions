@@ -1,0 +1,137 @@
+name: AliExpress Test Automation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 0 * * *'  # Her gece yarısı çalışır
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  checks: write
+
+jobs:
+  test:
+    name: Test Execution
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Maven Cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+    
+    - name: Test Ortamı Hazırlığı
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+        echo "export DISPLAY=:99" >> ~/.bashrc
+        source ~/.bashrc
+    
+    - name: Chrome Kurulumu
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
+    
+    - name: ChromeDriver Kurulumu
+      uses: nanasess/setup-chromedriver@master
+    
+    - name: Chrome Versiyonu Kontrolü
+      run: |
+        google-chrome --version
+        chromedriver --version
+    
+    - name: Allure Kurulumu
+      run: |
+        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
+        allure --version
+    
+    - name: Testleri Çalıştır
+      env:
+        DISPLAY: :99
+      run: |
+        mvn clean test \
+        -Dmaven.test.failure.ignore=true \
+        -Dallure.results.directory=target/allure-results
+      continue-on-error: true
+    
+    - name: Allure Raporu Oluştur
+      if: always()
+      run: |
+        allure generate target/allure-results --clean -o target/site/allure-maven-plugin
+        echo "Allure raporu oluşturuldu:"
+        ls -la target/site/allure-maven-plugin/
+    
+    - name: Allure Geçmişi
+      if: always()
+      run: |
+        mkdir -p target/allure-results/history
+        mkdir -p target/site/allure-maven-plugin/history
+    
+    - name: Test Sonuçlarını Yükle
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          target/surefire-reports/
+          target/allure-results/
+          target/site/allure-maven-plugin/
+        retention-days: 30
+    
+    - name: GitHub Pages Ayarla
+      uses: actions/configure-pages@v3
+    
+    - name: Allure Raporunu Yükle
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: target/site/allure-maven-plugin
+    
+    - name: Test Özeti
+      if: always()
+      run: |
+        echo "### 🚀 Test Çalıştırma Özeti" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Başarılı: $(grep -c "status='PASS'" target/surefire-reports/testng-results.xml || echo 0)" >> $GITHUB_STEP_SUMMARY
+        echo "❌ Başarısız: $(grep -c "status='FAIL'" target/surefire-reports/testng-results.xml || echo 0)" >> $GITHUB_STEP_SUMMARY
+        echo "⏭️ Atlanan: $(grep -c "status='SKIP'" target/surefire-reports/testng-results.xml || echo 0)" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📊 Detaylı Test Raporu" >> $GITHUB_STEP_SUMMARY
+        echo "Allure raporu için: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+    
+  deploy-report:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    permissions:
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2 
