@@ -181,6 +181,12 @@ jobs:
         mkdir -p "$BRANCH_DIR"
         cp -r /tmp/allure-temp/* "$BRANCH_DIR/"
         
+        # Copy videos if they exist
+        if [ -d "test-results/videos" ]; then
+          mkdir -p "$BRANCH_DIR/videos"
+          cp -r test-results/videos/* "$BRANCH_DIR/videos/"
+        fi
+        
         # Debug info
         echo "Branch directory contents:"
         ls -la "$BRANCH_DIR"
@@ -228,7 +234,7 @@ jobs:
     - name: 📥 Test Raporlarını İndir
       uses: actions/download-artifact@v4
       with:
-        name: test-reports
+        name: test-results
         path: target/site/allure-maven-plugin
     
     - name: 🔧 Configure Pages
@@ -269,6 +275,8 @@ jobs:
                 }
                 .branch-list a:hover { text-decoration: underline; }
                 .current { background: #e1f0ff !important; }
+                .timestamp { color: #666; font-size: 0.9em; }
+                .repo-link { margin-top: 20px; }
             </style>
         </head>
         <body>
@@ -282,21 +290,23 @@ jobs:
           for branch in target/site/allure-maven-plugin/branches/*; do
             if [ -d "$branch" ]; then
               branch_name=$(basename "$branch")
+              timestamp=$(date '+%Y-%m-%d %H:%M:%S')
               if [ "$branch_name" = "${{ env.BRANCH_NAME }}" ]; then
-                echo "<li class='current'><a href='branches/$branch_name'>📊 $branch_name (Current)</a></li>" >> target/site/allure-maven-plugin/index.html
+                echo "<li class='current'><a href='branches/$branch_name'>📊 $branch_name (Current)</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
               else
-                echo "<li><a href='branches/$branch_name'>📊 $branch_name</a></li>" >> target/site/allure-maven-plugin/index.html
+                echo "<li><a href='branches/$branch_name'>📊 $branch_name</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
               fi
             fi
           done
         else
-          echo "<li class='current'><a href='branches/${{ env.BRANCH_NAME }}'>📊 ${{ env.BRANCH_NAME }} (Current)</a></li>" >> target/site/allure-maven-plugin/index.html
+          timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+          echo "<li class='current'><a href='branches/${{ env.BRANCH_NAME }}'>📊 ${{ env.BRANCH_NAME }} (Current)</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
         fi
         
         cat >> target/site/allure-maven-plugin/index.html << EOL
             </ul>
-            <p>Last updated: $(date)</p>
-            <p>Repository: <a href="https://github.com/${{ github.repository }}">${{ github.repository }}</a></p>
+            <p class="timestamp">Last updated: $(date)</p>
+            <p class="repo-link">Repository: <a href="https://github.com/${{ github.repository }}">${{ github.repository }}</a></p>
         </body>
         </html>
         EOL
