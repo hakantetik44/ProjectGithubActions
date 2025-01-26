@@ -258,15 +258,21 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # Tüm branchler için deployment izni
+    if: always()
     permissions:
       pages: write
       id-token: write
       deployments: write
       actions: write
       security-events: write
+      contents: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     
     steps:
     - name: 🔄 Checkout Repository
@@ -285,7 +291,7 @@ jobs:
       uses: actions/configure-pages@v4
       with:
         enablement: true
-        token: ${{ secrets.GITHUB_TOKEN }}
+        static_site_generator: allure
     
     - name: 📂 Branch Klasörü Oluştur
       run: |
@@ -350,22 +356,26 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # Tüm branchler için deployment izni
+    if: always()
     permissions:
       pages: write
       id-token: write
       deployments: write
       actions: write
       security-events: write
+      contents: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     name: 📢 Bildirim Gönderme
