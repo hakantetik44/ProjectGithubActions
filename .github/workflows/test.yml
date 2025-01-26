@@ -2,9 +2,11 @@ name: AliExpress Test Automation
 
 on:
   push:
-    branches: [ "main", "feature/**" ]
+    branches:
+      - '**'  # Tüm branchler için
   pull_request:
-    branches: [ "main" ]
+    branches: 
+      - 'main'
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
@@ -28,6 +30,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
   DEPLOY_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+  TIMESTAMP: ${{ format('YYYY-MM-DD HH:mm:ss', github.event.head_commit.timestamp) }}
 
 jobs:
   setup:
@@ -242,81 +245,184 @@ jobs:
     
     - name: 📂 Branch Klasörü Oluştur
       run: |
-        # Önce geçici bir klasöre kopyala
-        mkdir -p /tmp/allure-temp
-        cp -r target/site/allure-maven-plugin/* /tmp/allure-temp/
+        # Branch adını al
+        BRANCH_NAME="${{ env.BRANCH_NAME }}"
+        TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
         
-        # Branch klasörünü oluştur
-        mkdir -p target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}
+        # Ana dizinde branches klasörü oluştur
+        mkdir -p target/site/allure-maven-plugin/branches
         
-        # Geçici klasörden branch klasörüne kopyala
-        cp -r /tmp/allure-temp/* target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}/
+        # Branch için klasör oluştur
+        BRANCH_DIR="target/site/allure-maven-plugin/branches/$BRANCH_NAME"
+        mkdir -p "$BRANCH_DIR"
         
-        # Ana dizinde index.html oluştur
+        # Raporları branch klasörüne kopyala
+        cp -r target/site/allure-maven-plugin/* "$BRANCH_DIR/" || true
+        
+        # Branch bilgilerini JSON dosyasına kaydet
+        cat > target/site/allure-maven-plugin/branches/branch-info.json << EOL
+        {
+          "lastUpdated": "$TIMESTAMP",
+          "currentBranch": "$BRANCH_NAME",
+          "branches": [
+            {
+              "name": "$BRANCH_NAME",
+              "lastUpdated": "$TIMESTAMP",
+              "reportUrl": "${{ env.DEPLOY_URL }}/branches/$BRANCH_NAME",
+              "commit": "${{ github.sha }}",
+              "author": "${{ github.actor }}"
+            }
+          ]
+        }
+        EOL
+        
+        # Ana sayfa için dinamik index.html oluştur
         cat > target/site/allure-maven-plugin/index.html << EOL
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Test Reports</title>
+            <title>AliExpress Test Reports</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                body { font-family: Arial, sans-serif; margin: 40px; }
-                h1 { color: #333; }
-                .branch-list { list-style: none; padding: 0; }
-                .branch-list li { 
-                    margin: 10px 0;
-                    padding: 10px;
-                    background: #f5f5f5;
-                    border-radius: 5px;
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    background: #f6f8fa;
                 }
-                .branch-list a {
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                h1 { 
+                    color: #24292e;
+                    border-bottom: 2px solid #e1e4e8;
+                    padding-bottom: 10px;
+                }
+                .branch-list {
+                    list-style: none;
+                    padding: 0;
+                }
+                .branch-card {
+                    background: #fff;
+                    border: 1px solid #e1e4e8;
+                    border-radius: 6px;
+                    margin: 10px 0;
+                    padding: 15px;
+                    transition: all 0.2s ease;
+                }
+                .branch-card:hover {
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+                    transform: translateY(-2px);
+                }
+                .branch-card.current {
+                    border-left: 4px solid #2ea44f;
+                }
+                .branch-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .branch-name {
+                    font-size: 1.2em;
+                    font-weight: 600;
+                    color: #0366d6;
+                }
+                .branch-meta {
+                    margin-top: 10px;
+                    color: #586069;
+                    font-size: 0.9em;
+                }
+                .branch-links {
+                    margin-top: 15px;
+                }
+                .branch-links a {
+                    display: inline-block;
+                    padding: 5px 12px;
+                    margin-right: 10px;
+                    background: #f1f8ff;
+                    border: 1px solid #c8e1ff;
+                    border-radius: 6px;
                     color: #0366d6;
                     text-decoration: none;
-                    font-weight: bold;
+                    font-size: 0.9em;
                 }
-                .branch-list a:hover { text-decoration: underline; }
-                .current { background: #e1f0ff !important; }
-                .timestamp { color: #666; font-size: 0.9em; }
-                .repo-link { margin-top: 20px; }
+                .branch-links a:hover {
+                    background: #e1f0ff;
+                }
+                .timestamp {
+                    color: #586069;
+                    font-size: 0.9em;
+                    margin-top: 20px;
+                }
+                .repo-info {
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #e1e4e8;
+                    color: #586069;
+                }
             </style>
         </head>
         <body>
-            <h1>🧪 Test Reports for All Branches</h1>
-            <p>Current Branch: <strong>${{ env.BRANCH_NAME }}</strong></p>
-            <ul class="branch-list">
-        EOL
-        
-        # Branch listesini oluştur
-        if [ -d "target/site/allure-maven-plugin/branches" ]; then
-          for branch in target/site/allure-maven-plugin/branches/*; do
-            if [ -d "$branch" ]; then
-              branch_name=$(basename "$branch")
-              timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-              if [ "$branch_name" = "${{ env.BRANCH_NAME }}" ]; then
-                echo "<li class='current'><a href='branches/$branch_name'>📊 $branch_name (Current)</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
-              else
-                echo "<li><a href='branches/$branch_name'>📊 $branch_name</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
-              fi
-            fi
-          done
-        else
-          timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-          echo "<li class='current'><a href='branches/${{ env.BRANCH_NAME }}'>📊 ${{ env.BRANCH_NAME }} (Current)</a><br><span class='timestamp'>Updated: $timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
-        fi
-        
-        cat >> target/site/allure-maven-plugin/index.html << EOL
-            </ul>
-            <p class="timestamp">Last updated: $(date)</p>
-            <p class="repo-link">Repository: <a href="https://github.com/${{ github.repository }}">${{ github.repository }}</a></p>
+            <div class="container">
+                <h1>🧪 AliExpress Test Reports</h1>
+                <div id="branchList">Loading branches...</div>
+                
+                <script>
+                    async function loadBranches() {
+                        try {
+                            const response = await fetch('branches/branch-info.json');
+                            const data = await response.json();
+                            
+                            const branchListHtml = data.branches.map(branch => {
+                                const isCurrent = branch.name === data.currentBranch;
+                                return \`
+                                    <div class="branch-card \${isCurrent ? 'current' : ''}">
+                                        <div class="branch-header">
+                                            <span class="branch-name">🌿 \${branch.name}</span>
+                                            <span class="branch-meta">
+                                                👤 \${branch.author} | 
+                                                📅 \${branch.lastUpdated}
+                                            </span>
+                                        </div>
+                                        <div class="branch-links">
+                                            <a href="branches/\${branch.name}">📊 View Report</a>
+                                            <a href="https://github.com/${{ github.repository }}/commit/\${branch.commit}">📝 View Commit</a>
+                                        </div>
+                                    </div>
+                                \`;
+                            }).join('');
+                            
+                            document.getElementById('branchList').innerHTML = branchListHtml;
+                            
+                        } catch (error) {
+                            console.error('Error loading branches:', error);
+                            document.getElementById('branchList').innerHTML = 'Error loading branch information.';
+                        }
+                    }
+                    
+                    loadBranches();
+                </script>
+                
+                <p class="timestamp">Last updated: $TIMESTAMP</p>
+                
+                <div class="repo-info">
+                    <p>📦 Repository: <a href="https://github.com/${{ github.repository }}">${{ github.repository }}</a></p>
+                    <p>🔄 Build: #${{ github.run_number }} | 🌿 Current Branch: $BRANCH_NAME</p>
+                </div>
+            </div>
         </body>
         </html>
         EOL
         
-        # Geçici klasörü temizle
-        rm -rf /tmp/allure-temp
-        
-        # Klasör yapısını kontrol et
-        echo "Klasör yapısı:"
-        ls -R target/site/allure-maven-plugin/
+        # Debug bilgisi
+        echo "Branch directory structure:"
+        ls -R target/site/allure-maven-plugin/branches/
     
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
