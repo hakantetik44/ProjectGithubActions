@@ -287,8 +287,15 @@ jobs:
     
     - name: 📂 Branch Klasörü Oluştur
       run: |
+        # Önce geçici bir klasöre kopyala
+        mkdir -p /tmp/allure-temp
+        cp -r target/site/allure-maven-plugin/* /tmp/allure-temp/
+        
+        # Branch klasörünü oluştur
         mkdir -p target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}
-        cp -r target/site/allure-maven-plugin/* target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}/
+        
+        # Geçici klasörden branch klasörüne kopyala
+        cp -r /tmp/allure-temp/* target/site/allure-maven-plugin/branches/${{ env.BRANCH_NAME }}/
         
         # Ana dizinde index.html oluştur
         cat > target/site/allure-maven-plugin/index.html << EOL
@@ -321,14 +328,21 @@ jobs:
             <ul class="branch-list">
         EOL
         
-        for branch in target/site/allure-maven-plugin/branches/*; do
-          branch_name=$(basename "$branch")
-          if [ "$branch_name" = "${{ env.BRANCH_NAME }}" ]; then
-            echo "<li class='current'><a href='branches/$branch_name'>📊 $branch_name (Current)</a></li>" >> target/site/allure-maven-plugin/index.html
-          else
-            echo "<li><a href='branches/$branch_name'>📊 $branch_name</a></li>" >> target/site/allure-maven-plugin/index.html
-          fi
-        done
+        # Branch listesini oluştur
+        if [ -d "target/site/allure-maven-plugin/branches" ]; then
+          for branch in target/site/allure-maven-plugin/branches/*; do
+            if [ -d "$branch" ]; then
+              branch_name=$(basename "$branch")
+              if [ "$branch_name" = "${{ env.BRANCH_NAME }}" ]; then
+                echo "<li class='current'><a href='branches/$branch_name'>📊 $branch_name (Current)</a></li>" >> target/site/allure-maven-plugin/index.html
+              else
+                echo "<li><a href='branches/$branch_name'>📊 $branch_name</a></li>" >> target/site/allure-maven-plugin/index.html
+              fi
+            fi
+          done
+        else
+          echo "<li class='current'><a href='branches/${{ env.BRANCH_NAME }}'>📊 ${{ env.BRANCH_NAME }} (Current)</a></li>" >> target/site/allure-maven-plugin/index.html
+        fi
         
         cat >> target/site/allure-maven-plugin/index.html << EOL
             </ul>
@@ -338,6 +352,13 @@ jobs:
         </html>
         EOL
         
+        # Geçici klasörü temizle
+        rm -rf /tmp/allure-temp
+        
+        # Klasör yapısını kontrol et
+        echo "Klasör yapısı:"
+        ls -R target/site/allure-maven-plugin/
+    
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
       with:
