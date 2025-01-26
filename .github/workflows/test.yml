@@ -342,6 +342,9 @@ jobs:
     
     - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        static_site_generator: allure
     
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
@@ -359,15 +362,12 @@ jobs:
       pages: write
       id-token: write
     
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
     steps:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         artifact_name: github-pages
         preview: false
         error_count: 0
