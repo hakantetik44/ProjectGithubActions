@@ -55,7 +55,7 @@ jobs:
     - name: 🖥️ Test Ortamı Hazırlığı
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb
+        sudo apt-get install -y xvfb ffmpeg
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
         echo "export DISPLAY=:99" >> ~/.bashrc
         source ~/.bashrc
@@ -94,10 +94,17 @@ jobs:
     - name: 🖥️ Test Ortamı Hazırlığı
       run: |
         sudo apt-get update
-        sudo apt-get install -y xvfb
+        sudo apt-get install -y xvfb ffmpeg
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
         echo "export DISPLAY=:99" >> ~/.bashrc
         source ~/.bashrc
+    
+    - name: 🎥 Video Kaydını Başlat
+      run: |
+        mkdir -p test-videos
+        ffmpeg -f x11grab -video_size 1920x1080 -i :99 -codec:v libx264 -r 30 test-videos/test-execution.mp4 &
+        echo $! > /tmp/ffmpeg.pid
+        echo "Video kaydı başlatıldı (PID: $(cat /tmp/ffmpeg.pid))"
     
     - name: 🌐 Chrome Kurulumu
       uses: browser-actions/setup-chrome@latest
@@ -136,50 +143,14 @@ jobs:
         echo "Test bitiş zamanı: $(date '+%Y-%m-%d %H:%M:%S')"
       continue-on-error: true
     
-    - name: 📈 Allure Raporu Oluştur
+    - name: 🎥 Video Kaydını Durdur
       if: always()
       run: |
-        # Executor bilgilerini ekle
-        echo '{
-          "name": "GitHub Actions",
-          "type": "github",
-          "reportName": "AliExpress Test Raporu",
-          "buildName": "Build #${{ github.run_number }}",
-          "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
-          "buildOrder": "${{ github.run_number }}",
-          "timestamp": "'$(date +%s%3N)'"
-        }' > target/allure-results/executor.json
-        
-        # Ortam bilgilerini ekle
-        echo '{
-          "name": "test",
-          "values": [
-            { "name": "OS", "value": "Ubuntu-latest" },
-            { "name": "Browser", "value": "Chrome ${{ needs.setup.outputs.chrome-version }}" },
-            { "name": "Java", "value": "21" },
-            { "name": "Branch", "value": "${{ github.ref_name }}" },
-            { "name": "Commit", "value": "${{ github.sha }}" }
-          ]
-        }' > target/allure-results/categories.json
-        
-        # Environment bilgilerini ekle
-        echo '{
-          "Browser": "Chrome ${{ needs.setup.outputs.chrome-version }}",
-          "Browser.Version": "${{ needs.setup.outputs.chrome-version }}",
-          "Java.Version": "21",
-          "OS": "Ubuntu-latest",
-          "Branch": "${{ github.ref_name }}",
-          "Commit": "${{ github.sha }}",
-          "Test Runner": "TestNG",
-          "Build": "#${{ github.run_number }}"
-        }' > target/allure-results/environment.properties
-        
-        # Raporu oluştur
-        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
-        
-        echo "Allure raporu oluşturuldu:"
-        ls -la target/site/allure-maven-plugin/
+        if [ -f /tmp/ffmpeg.pid ]; then
+          echo "Video kaydı durduruluyor (PID: $(cat /tmp/ffmpeg.pid))"
+          kill -2 $(cat /tmp/ffmpeg.pid)
+          sleep 5
+        fi
     
     - name: 📦 Test Sonuçlarını Yükle
       if: always()
@@ -188,6 +159,14 @@ jobs:
         name: test-results
         path: |
           target/
+        retention-days: 30
+    
+    - name: 🎥 Video Kaydını Yükle
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-videos
+        path: test-videos/
         retention-days: 30
 
   report:
@@ -204,6 +183,12 @@ jobs:
       with:
         name: test-results
         path: target
+    
+    - name: 📥 Test Videolarını İndir
+      uses: actions/download-artifact@v4
+      with:
+        name: test-videos
+        path: target/site/allure-maven-plugin/data/attachments
     
     - name: 📊 Allure Kurulumu
       run: |
@@ -260,6 +245,9 @@ jobs:
         echo "- 🏗️ [Build Detayları](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
         echo "- 📊 [Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
         echo "- 📝 [Commit Detayları](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+        echo "### 📹 Test Videosu" >> $GITHUB_STEP_SUMMARY
+        echo "Test çalıştırmasının video kaydına Allure raporundan ulaşabilirsiniz." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
 
   pages:
     name: 🌐 GitHub Pages
