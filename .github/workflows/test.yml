@@ -2,11 +2,14 @@ name: AliExpress Test Automation
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - '**'  # Tüm branchler için
   pull_request:
-    branches: [ main, master ]
+    branches:
+      - '**'  # Tüm branchlere açılan PR'lar için
   schedule:
     - cron: '0 0 * * *'  # Her gece yarısı çalışır
+  workflow_dispatch:  # Manuel tetikleme için
 
 # Top level permissions for all jobs
 permissions:
