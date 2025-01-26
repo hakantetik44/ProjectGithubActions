@@ -67,27 +67,50 @@ public class AliExpressHomePage {
     }
 
     @Step("Ürün ara: {0}")
-    public void searchProduct(String productName) {
+    public void searchProduct(String productName) throws InterruptedException {
         try {
-            // Arama kutusunu bekle ve tıkla
-            WebElement search = longWait.until(ExpectedConditions.elementToBeClickable(searchBox));
+            // Arama kutusunu bekle
+            WebElement search = longWait.until(ExpectedConditions.presenceOfElementLocated(searchBox));
             
-            // JavaScript ile scroll
+            // JavaScript ile scroll ve focus
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", search);
+            ((JavascriptExecutor) driver).executeScript("arguments[0].focus();", search);
+            Thread.sleep(1000);
             
-            // JavaScript ile tıklama ve değer atama
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", search);
-            ((JavascriptExecutor) driver).executeScript("arguments[0].value = arguments[1];", search, productName);
+            // Mevcut değeri temizle
+            search.clear();
+            Thread.sleep(500);
+            
+            // Değeri gir
+            search.sendKeys(productName);
+            Thread.sleep(1000);
+            
+            // URL'yi kontrol et
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Arama öncesi URL: " + currentUrl);
             
             // Enter tuşuna bas
             search.sendKeys(Keys.ENTER);
-            System.out.println("Ürün araması yapıldı: " + productName);
+            System.out.println("Enter tuşuna basıldı");
+            
+            // URL değişimini bekle
+            longWait.until(driver -> {
+                String newUrl = driver.getCurrentUrl();
+                System.out.println("Yeni URL: " + newUrl);
+                return !newUrl.equals(currentUrl);
+            });
             
             // Arama sonuçlarını bekle
             longWait.until(ExpectedConditions.presenceOfElementLocated(searchResults));
+            System.out.println("Arama sonuçları yüklendi");
+            
+            // Son URL'yi logla
+            System.out.println("Son URL: " + driver.getCurrentUrl());
             
         } catch (Exception e) {
             System.out.println("Ürün araması yapılamadı: " + e.getMessage());
+            System.out.println("Mevcut URL: " + driver.getCurrentUrl());
+            System.out.println("Sayfa kaynağı uzunluğu: " + driver.getPageSource().length());
             throw e;
         }
     }
