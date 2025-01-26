@@ -122,79 +122,34 @@ public class AliExpressHomePage {
             longWait.until(ExpectedConditions.presenceOfElementLocated(searchResults));
             Thread.sleep(2000); // Sayfa yüklenmesi için ek bekleme
             
-            // Sayfanın tamamen yüklenmesini bekle
-            longWait.until(webDriver -> ((JavascriptExecutor) webDriver)
-                .executeScript("return document.readyState").equals("complete"));
-            
             // URL'de arama terimini kontrol et
             String currentUrl = driver.getCurrentUrl();
             System.out.println("Mevcut URL: " + currentUrl);
             
+            // URL kontrolü
             boolean isSearchTermInUrl = currentUrl.toLowerCase().contains(searchTerm.toLowerCase()) || 
-                                      currentUrl.toLowerCase().contains("SearchText=" + searchTerm.toLowerCase()) ||
+                                      currentUrl.toLowerCase().contains("searchtext=" + searchTerm.toLowerCase()) ||
                                       currentUrl.toLowerCase().contains("wholesale-" + searchTerm.toLowerCase());
             
-            if (isSearchTermInUrl) {
-                System.out.println("✓ URL'de arama terimi bulundu");
-                Assert.assertTrue(true, "URL'de arama terimi bulundu: " + currentUrl);
-                return;
-            }
+            // Arama sonuçları kontrolü
+            boolean hasSearchResults = driver.findElements(searchResults).size() > 0;
             
-            // Ürün başlıklarını kontrol et
-            try {
-                var titles = longWait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(productTitles));
-                System.out.println("Bulunan ürün sayısı: " + titles.size());
+            // Sonuçları değerlendir
+            if (isSearchTermInUrl && hasSearchResults) {
+                System.out.println("✓ Arama sonuçları başarıyla doğrulandı");
+                Assert.assertTrue(true, "Arama sonuçları başarıyla doğrulandı. URL: " + currentUrl);
+            } else {
+                String errorMessage = "Arama sonuçları doğrulanamadı:\n";
+                errorMessage += "- URL'de arama terimi var mı: " + isSearchTermInUrl + "\n";
+                errorMessage += "- Arama sonuçları görüntülendi mi: " + hasSearchResults + "\n";
+                errorMessage += "- Mevcut URL: " + currentUrl;
                 
-                if (titles.isEmpty()) {
-                    // Sayfa kaynağını kontrol et
-                    String pageSource = driver.getPageSource();
-                    System.out.println("Sayfa kaynağı uzunluğu: " + pageSource.length());
-                    if (pageSource.toLowerCase().contains(searchTerm.toLowerCase())) {
-                        System.out.println("✓ Sayfa kaynağında arama terimi bulundu");
-                        Assert.assertTrue(true, "Sayfa kaynağında arama terimi bulundu");
-                        return;
-                    }
-                }
-                
-                // Başlıkları kontrol et
-                for (WebElement title : titles) {
-                    String titleText = "";
-                    // Farklı yöntemlerle text almayı dene
-                    try {
-                        titleText = title.getText();
-                    } catch (Exception e) {
-                        try {
-                            titleText = (String) ((JavascriptExecutor) driver)
-                                .executeScript("return arguments[0].textContent;", title);
-                        } catch (Exception e2) {
-                            try {
-                                titleText = title.getAttribute("textContent");
-                            } catch (Exception e3) {
-                                continue;
-                            }
-                        }
-                    }
-                    
-                    if (titleText != null && !titleText.trim().isEmpty()) {
-                        System.out.println("- " + titleText);
-                        if (titleText.toLowerCase().contains(searchTerm.toLowerCase())) {
-                            System.out.println("✓ Eşleşme bulundu: " + titleText);
-                            Assert.assertTrue(true, "Ürün başlığında eşleşme bulundu: " + titleText);
-                            return;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                System.out.println("Başlık kontrolü sırasında hata: " + e.getMessage());
+                Assert.fail(errorMessage);
             }
-            
-            // Hiçbir eşleşme bulunamadıysa
-            Assert.fail("Arama sonuçlarında '" + searchTerm + "' bulunamadı. URL: " + currentUrl);
             
         } catch (Exception e) {
             System.out.println("Arama sonuçları doğrulanamadı: " + e.getMessage());
             System.out.println("Mevcut URL: " + driver.getCurrentUrl());
-            System.out.println("Sayfa kaynağı uzunluğu: " + driver.getPageSource().length());
             throw e;
         }
     }
