@@ -13,11 +13,16 @@ permissions:
   pages: write
   id-token: write
   checks: write
+  actions: read
+  deployments: write
+  statuses: write
 
 jobs:
-  test:
-    name: 🧪 Test Execution
+  setup:
+    name: 🛠️ Ortam Hazırlığı
     runs-on: ubuntu-latest
+    outputs:
+      chrome-version: ${{ steps.chrome-version.outputs.version }}
     
     steps:
     - uses: actions/checkout@v4
@@ -55,9 +60,27 @@ jobs:
       uses: nanasess/setup-chromedriver@master
     
     - name: ℹ️ Chrome Versiyonu Kontrolü
+      id: chrome-version
       run: |
-        google-chrome --version
+        version=$(google-chrome --version | cut -d ' ' -f 3)
+        echo "version=$version" >> $GITHUB_OUTPUT
+        echo "Chrome Version: $version"
         chromedriver --version
+
+  test:
+    name: 🧪 Test Çalıştırma
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: ☕ JDK Kurulumu
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
     
     - name: 📊 Allure Kurulumu
       run: |
@@ -74,19 +97,32 @@ jobs:
         -Dmaven.test.failure.ignore=true \
         -Dallure.results.directory=target/allure-results
       continue-on-error: true
+
+  report:
+    name: 📊 Rapor Oluşturma
+    needs: [setup, test]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: 📥 Test Sonuçlarını İndir
+      uses: actions/download-artifact@v4
+      with:
+        name: test-results
+        path: target
     
     - name: 📈 Allure Raporu Oluştur
-      if: always()
       run: |
         allure generate target/allure-results --clean -o target/site/allure-maven-plugin
         echo "Allure raporu oluşturuldu:"
         ls -la target/site/allure-maven-plugin/
     
     - name: 📜 Test Sonuçlarını Yükle
-      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
+        name: test-reports
         path: |
           target/surefire-reports/
           target/allure-results/
@@ -94,7 +130,6 @@ jobs:
         retention-days: 30
     
     - name: 📝 Test Özeti
-      if: always()
       run: |
         echo "# 🚀 Test Çalıştırma Raporu" >> $GITHUB_STEP_SUMMARY
         echo "## 📊 Test Sonuçları" >> $GITHUB_STEP_SUMMARY
@@ -106,25 +141,31 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## 🔍 Test Detayları" >> $GITHUB_STEP_SUMMARY
         echo "- 🕒 Çalıştırma Zamanı: $(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
-        echo "- 🌐 Chrome Versiyonu: $(google-chrome --version)" >> $GITHUB_STEP_SUMMARY
-        echo "- 🚗 ChromeDriver Versiyonu: $(chromedriver --version)" >> $GITHUB_STEP_SUMMARY
+        echo "- 🌐 Chrome Versiyonu: ${{ needs.setup.outputs.chrome-version }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## 📊 Allure Raporu" >> $GITHUB_STEP_SUMMARY
         echo "📱 [Detaylı Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+
+  pages:
+    name: 🌐 GitHub Pages
+    needs: report
+    runs-on: ubuntu-latest
+    if: always()
     
-    - name: 🌐 Configure Pages
+    steps:
+    - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
       with:
         enablement: true
-    
+        
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: target/site/allure-maven-plugin
-    
+
   deploy:
-    name: 🚀 Deploy Report
-    needs: test
+    name: 🚀 Rapor Yayınlama
+    needs: pages
     runs-on: ubuntu-latest
     if: always()
     
@@ -133,6 +174,28 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-      - name: 🌐 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4 
+    - name: 🌐 Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  notify:
+    name: 📢 Bildirim Gönderme
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📋 Durum Kontrolü
+      run: |
+        if [[ "${{ needs.test.result }}" == "success" ]]; then
+          echo "## ✅ Testler Başarıyla Tamamlandı" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+          echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+        fi 

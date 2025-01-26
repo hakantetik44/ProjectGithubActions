@@ -10,7 +10,7 @@
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI/CD-blue.svg?style=for-the-badge&logo=github-actions)](https://github.com/features/actions)
 [![Log4j2](https://img.shields.io/badge/Log4j2-2.20.0-blue.svg?style=for-the-badge&logo=apache)](https://logging.apache.org/log4j/2.x/)
 
-<img src="https://www.selenium.dev/images/selenium_logo_square_green.png" alt="Selenium Logo" width="100"/>
+  <img src="https://www.selenium.dev/images/selenium_logo_square_green.png" alt="Selenium Logo" width="100"/>
 
 </div>
 
