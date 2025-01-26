@@ -22,7 +22,8 @@ public class AliExpressTest {
     @Description("Test ortamını hazırla")
     public void setUp() {
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");  // Yeni headless modu
+        // Chrome Flags
+        options.addArguments("--headless=new");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--remote-allow-origins=*");
@@ -30,28 +31,54 @@ public class AliExpressTest {
         options.addArguments("--disable-gpu");
         options.addArguments("--disable-extensions");
         options.addArguments("--disable-popup-blocking");
-        options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
+        options.addArguments("--disable-notifications");
+        options.addArguments("--disable-infobars");
+        options.addArguments("--ignore-certificate-errors");
+        options.addArguments("--disable-web-security");
+        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
         
+        // Performance flags
+        options.addArguments("--aggressive-cache-discard");
+        options.addArguments("--disable-cache");
+        options.addArguments("--disable-application-cache");
+        options.addArguments("--disable-offline-load-stale-cache");
+        options.addArguments("--disk-cache-size=0");
+        
+        // Memory flags
+        options.addArguments("--disable-features=TranslateUI");
+        options.addArguments("--disable-features=BlinkGenPropertyTrees");
+        options.addArguments("--disable-features=LazyFrameLoading");
+        options.addArguments("--disable-features=PreloadMediaEngagementData");
+        
+        // Page load strategy
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
+        
+        // Timeouts
         driver = new ChromeDriver(options);
-        wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+        wait = new WebDriverWait(driver, Duration.ofSeconds(60));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
+        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(60));
         driver.manage().timeouts().scriptTimeout(Duration.ofSeconds(30));
         
         homePage = new AliExpressHomePage(driver, wait);
         
-        // Set language cookie before navigating
-        driver.get("https://www.aliexpress.com");
-        driver.manage().addCookie(new Cookie("aep_usuc_f", "site=glo&c_tp=USD&region=US&b_locale=en_US"));
-        
-        // Navigate to homepage
-        driver.get("https://www.aliexpress.com");
-        System.out.println("Ana sayfaya gidildi: https://www.aliexpress.com");
-        
         try {
-            Thread.sleep(5000); // Sayfa tam olarak yüklenene kadar bekle
-        } catch (InterruptedException e) {
-            System.out.println("Bekleme sırasında kesinti: " + e.getMessage());
+            // Set language cookie
+            driver.get("about:blank");
+            driver.manage().addCookie(new Cookie("aep_usuc_f", "site=glo&c_tp=USD&region=US&b_locale=en_US"));
+            
+            // Navigate to homepage
+            driver.get("https://www.aliexpress.com");
+            System.out.println("Ana sayfaya gidildi: " + driver.getCurrentUrl());
+            
+            // Wait for page load
+            Thread.sleep(5000);
+        } catch (Exception e) {
+            System.out.println("Setup sırasında hata: " + e.getMessage());
+            Allure.addAttachment("Setup Error", e.getMessage());
+            if (driver != null) {
+                Allure.addAttachment("Setup Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
+            }
         }
     }
 
@@ -61,22 +88,29 @@ public class AliExpressTest {
     @Severity(SeverityLevel.CRITICAL)
     public void testSearchProduct() throws InterruptedException {
         try {
+            // Ana sayfaya git ve bekle
             homePage.navigateToHomePage();
-            Thread.sleep(5000); // Sayfa yüklenme bekleme
+            Thread.sleep(5000);
+            Allure.addAttachment("Homepage Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
             
+            // Ürün ara
             String searchTerm = "laptop";
             homePage.searchProduct(searchTerm);
-            Thread.sleep(3000); // Arama sonuçları bekleme
+            Thread.sleep(3000);
+            Allure.addAttachment("Search Results Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
             
-            // URL ve sayfa kaynağını logla
-            System.out.println("Current URL: " + driver.getCurrentUrl());
-            System.out.println("Page Source Length: " + driver.getPageSource().length());
+            // URL ve sayfa bilgilerini logla
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("Current URL: " + currentUrl);
+            Allure.addAttachment("Current URL", currentUrl);
             
             // Arama sonuçlarını doğrula
             homePage.verifySearchResults(searchTerm);
+            Allure.addAttachment("Final Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
             
         } catch (Exception e) {
-            // Hata durumunda screenshot al
+            System.out.println("Test sırasında hata: " + e.getMessage());
+            Allure.addAttachment("Error Details", e.getMessage());
             Allure.addAttachment("Error Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
             throw e;
         }
@@ -86,7 +120,9 @@ public class AliExpressTest {
     @Description("Test sonrası temizlik")
     public void afterMethod(ITestResult result) {
         if (result.getStatus() == ITestResult.FAILURE) {
-            // Test başarısız olduğunda screenshot al
+            System.out.println("Test başarısız: " + result.getName());
+            System.out.println("Hata: " + result.getThrowable().getMessage());
+            Allure.addAttachment("Failure Details", result.getThrowable().getMessage());
             Allure.addAttachment("Failure Screenshot", new ByteArrayInputStream(((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES)));
         }
     }
@@ -94,9 +130,13 @@ public class AliExpressTest {
     @AfterClass
     @Description("Test ortamını temizle")
     public void tearDown() {
-        if (driver != null) {
-            driver.quit();
-            System.out.println("Driver kapatıldı");
+        try {
+            if (driver != null) {
+                driver.quit();
+                System.out.println("Driver başarıyla kapatıldı");
+            }
+        } catch (Exception e) {
+            System.out.println("Driver kapatılırken hata: " + e.getMessage());
         }
     }
 } 
