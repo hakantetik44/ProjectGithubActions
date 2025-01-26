@@ -228,28 +228,46 @@ jobs:
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
         BRANCH_DIR="branches/$BRANCH_NAME"
         
-        # Create temp directory
-        mkdir -p /tmp/allure-temp
+        # Debug: Artifact içeriğini kontrol et
+        echo "Test results directory contents:"
+        ls -R test-results/
         
-        # Copy files to temp directory
-        cp -r test-results/allure-report/* /tmp/allure-temp/
+        # Allure rapor dizinini belirle
+        ALLURE_SOURCE=""
+        if [ -d "test-results/allure-maven-report" ]; then
+          ALLURE_SOURCE="test-results/allure-maven-report"
+        elif [ -d "test-results/allure-cli-report" ]; then
+          ALLURE_SOURCE="test-results/allure-cli-report"
+        fi
         
-        # Create branch directory and copy from temp
+        if [ -z "$ALLURE_SOURCE" ]; then
+          echo "⚠️ No Allure report found in test results"
+          exit 1
+        fi
+        
+        # Branch dizinini oluştur
         mkdir -p "$BRANCH_DIR"
-        cp -r /tmp/allure-temp/* "$BRANCH_DIR/"
         
-        # Copy videos if they exist
+        # Allure raporunu kopyala
+        echo "Copying Allure report from $ALLURE_SOURCE to $BRANCH_DIR"
+        cp -r "$ALLURE_SOURCE"/* "$BRANCH_DIR/"
+        
+        # Video ve ekran görüntülerini kopyala
         if [ -d "test-results/videos" ]; then
           mkdir -p "$BRANCH_DIR/videos"
           cp -r test-results/videos/* "$BRANCH_DIR/videos/"
+          echo "✓ Videos copied"
         fi
         
-        # Debug info
-        echo "Branch directory contents:"
-        ls -la "$BRANCH_DIR"
+        if [ -d "test-results/screenshots" ]; then
+          mkdir -p "$BRANCH_DIR/screenshots"
+          cp -r test-results/screenshots/* "$BRANCH_DIR/screenshots/"
+          echo "✓ Screenshots copied"
+        fi
         
-        # Clean up
-        rm -rf /tmp/allure-temp
+        # Debug: Son dizin yapısını kontrol et
+        echo "Final branch directory structure:"
+        ls -R "$BRANCH_DIR"
         
     - name: 🚀 Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
@@ -264,7 +282,9 @@ jobs:
         echo "### Test Report Summary" >> $GITHUB_STEP_SUMMARY
         echo "✅ Test results have been deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
         echo "📊 [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/branches/${GITHUB_REF#refs/heads/}/index.html)" >> $GITHUB_STEP_SUMMARY
-        echo "🎥 [Download Test Recording](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/branches/${GITHUB_REF#refs/heads/}/videos/test-recording.mp4)" >> $GITHUB_STEP_SUMMARY
+        if [ -f "branches/${GITHUB_REF#refs/heads/}/videos/test-recording.mp4" ]; then
+          echo "🎥 [Download Test Recording](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/branches/${GITHUB_REF#refs/heads/}/videos/test-recording.mp4)" >> $GITHUB_STEP_SUMMARY
+        fi
 
   pages:
     name: 🌐 GitHub Pages
