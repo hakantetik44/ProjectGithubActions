@@ -67,11 +67,12 @@ public class AliExpressTest {
             
             Allure.step("Dil ayarlarını yapılandır");
             driver.get("https://www.aliexpress.com");
-            Cookie cookie = new Cookie.Builder("aep_usuc_f", "site=glo&c_tp=USD&region=US&b_locale=en_US")
-                .domain(".aliexpress.com")
-                .path("/")
-                .build();
-            driver.manage().addCookie(cookie);
+            Thread.sleep(2000); // Sayfanın yüklenmesini bekle
+            
+            // JavaScript ile cookie ayarla
+            ((JavascriptExecutor) driver).executeScript(
+                "document.cookie = 'aep_usuc_f=site=glo&c_tp=USD&region=US&b_locale=en_US; path=/; domain=aliexpress.com';"
+            );
             
             Allure.step("Ana sayfaya git");
             driver.get("https://www.aliexpress.com");
