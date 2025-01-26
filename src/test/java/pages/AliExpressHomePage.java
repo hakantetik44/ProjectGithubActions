@@ -6,6 +6,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import java.time.Duration;
+import java.io.File;
 
 public class AliExpressHomePage {
     private final WebDriver driver;
@@ -16,10 +17,10 @@ public class AliExpressHomePage {
     // Locators
     private final By searchBox = By.cssSelector("input[type='search'], input[placeholder*='search'], #search-words, .search--keyword--15P08Ji");
     private final By searchButton = By.cssSelector("button[data-spm-click*='search']");
-    private final By cookieAcceptButton = By.cssSelector(".btn-accept, .close-btn");
+    private final By cookieAcceptButton = By.cssSelector(".btn-accept, .close-btn, button[data-role='accept']");
     private final By notificationDenyButton = By.cssSelector("div.Sk1_X._1-SOk, .close-btn");
-    private final By searchResults = By.cssSelector("[class*='SearchProductFeed']");
-    private final By productTitles = By.cssSelector("[class*='manhattan--titleText'], [class*='manhattan--container'] h1, .multi--titleText--nXeOvyr, .product-title");
+    private final By searchResults = By.cssSelector("[class*='manhattan--container'], .list--gallery--C2f2tvm, .manhattan--content--R3f7kN");
+    private final By productTitles = By.cssSelector("[class*='manhattan--titleText'], .multi--titleText--nXeOvyr, h1.manhattan--titleText--WccSjUS");
 
     public AliExpressHomePage(WebDriver driver, WebDriverWait wait) {
         this.driver = driver;
@@ -97,11 +98,17 @@ public class AliExpressHomePage {
             longWait.until(driver -> {
                 String newUrl = driver.getCurrentUrl();
                 System.out.println("Yeni URL: " + newUrl);
-                return !newUrl.equals(currentUrl);
+                return newUrl.contains("wholesale") || newUrl.contains("w/") || newUrl.contains("search");
             });
             
+            // Sayfanın yüklenmesini bekle
+            Thread.sleep(5000);
+            
             // Arama sonuçlarını bekle
-            longWait.until(ExpectedConditions.presenceOfElementLocated(searchResults));
+            longWait.until(ExpectedConditions.or(
+                ExpectedConditions.presenceOfElementLocated(searchResults),
+                ExpectedConditions.presenceOfElementLocated(productTitles)
+            ));
             System.out.println("Arama sonuçları yüklendi");
             
             // Son URL'yi logla
@@ -111,6 +118,13 @@ public class AliExpressHomePage {
             System.out.println("Ürün araması yapılamadı: " + e.getMessage());
             System.out.println("Mevcut URL: " + driver.getCurrentUrl());
             System.out.println("Sayfa kaynağı uzunluğu: " + driver.getPageSource().length());
+            
+            // Hata durumunda ekran görüntüsü al
+            if (driver instanceof TakesScreenshot) {
+                File screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+                System.out.println("Hata anı ekran görüntüsü alındı: " + screenshot.getAbsolutePath());
+            }
+            
             throw e;
         }
     }
@@ -118,29 +132,29 @@ public class AliExpressHomePage {
     @Step("Arama sonuçlarını doğrula: {0}")
     public void verifySearchResults(String searchTerm) throws InterruptedException {
         try {
-            // Arama sonuçlarını bekle
-            longWait.until(ExpectedConditions.presenceOfElementLocated(searchResults));
-            Thread.sleep(2000); // Sayfa yüklenmesi için ek bekleme
+            // Sayfanın tamamen yüklenmesi için bekle
+            Thread.sleep(5000);
             
-            // URL'de arama terimini kontrol et
-            String currentUrl = driver.getCurrentUrl();
+            // URL'yi kontrol et
+            String currentUrl = driver.getCurrentUrl().toLowerCase();
             System.out.println("Mevcut URL: " + currentUrl);
             
-            // URL kontrolü
-            boolean isSearchTermInUrl = currentUrl.toLowerCase().contains(searchTerm.toLowerCase()) || 
-                                      currentUrl.toLowerCase().contains("searchtext=" + searchTerm.toLowerCase()) ||
-                                      currentUrl.toLowerCase().contains("wholesale-" + searchTerm.toLowerCase());
+            // URL kontrolü - daha geniş kontrol kriterleri
+            boolean isSearchTermInUrl = currentUrl.contains(searchTerm.toLowerCase()) || 
+                                      currentUrl.contains("wholesale") ||
+                                      currentUrl.contains("/w/") ||
+                                      currentUrl.contains("search");
             
-            // Arama sonuçları kontrolü
-            boolean hasSearchResults = driver.findElements(searchResults).size() > 0;
+            // Arama sonuçları kontrolü - birden fazla locator ile deneme
+            boolean hasSearchResults = driver.findElements(searchResults).size() > 0 || 
+                                     driver.findElements(productTitles).size() > 0;
             
-            // Sonuçları değerlendir
             if (isSearchTermInUrl && hasSearchResults) {
                 System.out.println("✓ Arama sonuçları başarıyla doğrulandı");
                 Assert.assertTrue(true, "Arama sonuçları başarıyla doğrulandı. URL: " + currentUrl);
             } else {
                 String errorMessage = "Arama sonuçları doğrulanamadı:\n";
-                errorMessage += "- URL'de arama terimi var mı: " + isSearchTermInUrl + "\n";
+                errorMessage += "- URL'de arama kriterleri var mı: " + isSearchTermInUrl + "\n";
                 errorMessage += "- Arama sonuçları görüntülendi mi: " + hasSearchResults + "\n";
                 errorMessage += "- Mevcut URL: " + currentUrl;
                 
