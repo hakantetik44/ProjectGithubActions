@@ -353,9 +353,9 @@ jobs:
 
   notify:
     name: 📢 Bildirim Gönderme
-    needs: [test, deploy]
-    runs-on: ubuntu-latest
+    needs: [test]
     if: always()
+    runs-on: ubuntu-latest
     
     steps:
     - name: 📋 Durum Kontrolü
@@ -366,9 +366,14 @@ jobs:
           echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-          echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
-          echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
+            echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+          fi
         else
-          echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+          echo "## ℹ️ Rapor Durumu" >> $GITHUB_STEP_SUMMARY
+          echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
         fi 
