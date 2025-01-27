@@ -109,13 +109,6 @@ jobs:
     - name: 🚗 ChromeDriver Kurulumu
       uses: nanasess/setup-chromedriver@master
     
-    - name: 📊 Allure Kurulumu
-      run: |
-        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
-        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
-        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
-        allure --version
-    
     - name: 🚀 Testleri Çalıştır
       env:
         DISPLAY: :99
@@ -134,29 +127,9 @@ jobs:
         -Dallure.link.issue.pattern=https://github.com/${{ github.repository }}/issues/{} \
         -Dallure.report.clean=true
         
-        # Allure raporu oluştur
-        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
-        
         echo "Test bitiş zamanı: $(date '+%Y-%m-%d %H:%M:%S')"
       continue-on-error: true
-    
-    - name: 📊 Allure Raporu Yayınla
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-report
-        path: target/site/allure-maven-plugin
-        retention-days: 30
 
-    - name: 📝 Rapor Linkini Ekle
-      if: always()
-      run: |
-        echo "### 📊 Allure Test Raporu" >> $GITHUB_STEP_SUMMARY
-        echo "📥 [Allure Raporu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "🌐 [GitHub Pages Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        fi
-    
     - name: 📈 Allure Raporu Oluştur
       if: always()
       run: |
@@ -201,6 +174,23 @@ jobs:
         
         echo "Allure raporu oluşturuldu:"
         ls -la target/site/allure-maven-plugin/
+    
+    - name: 📊 Allure Raporu Yayınla
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-report
+        path: target/site/allure-maven-plugin
+        retention-days: 30
+
+    - name: 📝 Rapor Linkini Ekle
+      if: always()
+      run: |
+        echo "### 📊 Allure Test Raporu" >> $GITHUB_STEP_SUMMARY
+        echo "📥 [Allure Raporu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "🌐 [GitHub Pages Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        fi
     
     - name: 📦 Test Sonuçlarını Yükle
       if: always()
@@ -299,21 +289,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-    - name: 🔄 Checkout Repository
-      uses: actions/checkout@v4
-    
     - name: 📥 Test Raporlarını İndir
       uses: actions/download-artifact@v4
       with:
         name: allure-report
         path: allure-report
-    
-    - name: 📂 List Files
-      run: |
-        echo "Current directory contents:"
-        ls -la
-        echo "Target directory contents:"
-        ls -la allure-report || echo "Target directory not found"
     
     - name: 🔧 Setup Pages
       uses: actions/configure-pages@v4
