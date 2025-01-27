@@ -144,6 +144,54 @@ jobs:
         echo "Test bitiş zamanı: $(date '+%Y-%m-%d %H:%M:%S')"
       continue-on-error: true
 
+    - name: 📈 Allure Raporu Oluştur
+      if: always()
+      run: |
+        # Raporu oluştur
+        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
+        
+        # Executor bilgilerini ekle
+        echo '{
+          "name": "GitHub Actions",
+          "type": "github",
+          "reportName": "AliExpress Test Raporu",
+          "buildName": "Build #${{ github.run_number }}",
+          "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
+          "buildOrder": "${{ github.run_number }}",
+          "timestamp": "'$(date +%s%3N)'"
+        }' > ${ALLURE_RESULTS_DIR}/executor.json
+        
+        # Ortam bilgilerini ekle
+        echo '{
+          "name": "test",
+          "values": [
+            { "name": "OS", "value": "Ubuntu-latest" },
+            { "name": "Browser", "value": "Chrome ${{ needs.setup.outputs.chrome-version }}" },
+            { "name": "Java", "value": "21" },
+            { "name": "Branch", "value": "${{ github.ref_name }}" },
+            { "name": "Commit", "value": "${{ github.sha }}" }
+          ]
+        }' > ${ALLURE_RESULTS_DIR}/categories.json
+        
+        # Environment bilgilerini ekle
+        echo '{
+          "Browser": "Chrome ${{ needs.setup.outputs.chrome-version }}",
+          "Browser.Version": "${{ needs.setup.outputs.chrome-version }}",
+          "Java.Version": "21",
+          "OS": "Ubuntu-latest",
+          "Branch": "${{ github.ref_name }}",
+          "Commit": "${{ github.sha }}",
+          "Test Runner": "TestNG",
+          "Build": "#${{ github.run_number }}"
+        }' > ${ALLURE_RESULTS_DIR}/environment.properties
+        
+        # Raporu tekrar oluştur
+        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
+        
+        echo "Allure raporu oluşturuldu:"
+        ls -la target/site/allure-maven-plugin/
+
     - name: 📊 Allure Raporu Yayınla
       if: always()
       uses: actions/upload-artifact@v4
