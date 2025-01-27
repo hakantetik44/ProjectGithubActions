@@ -318,12 +318,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
-    # Specific permissions for this job
     permissions:
       pages: write
       id-token: write
-      deployments: write
-      statuses: write
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
@@ -331,7 +328,6 @@ jobs:
       uses: actions/deploy-pages@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        path: target/site/allure-maven-plugin
 
     - name: ✅ Verify Deployment
       if: success()
