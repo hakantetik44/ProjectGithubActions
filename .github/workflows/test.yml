@@ -141,14 +141,21 @@ jobs:
     - name: 📈 Allure Raporu Oluştur
       if: always()
       run: |
+        # Branch adını al ve klasör adı için uygun hale getir
+        BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+        REPORT_DIR="target/site/allure-maven-plugin/$BRANCH_NAME"
+        
+        # Branch için klasör oluştur
+        mkdir -p $REPORT_DIR
+        
         # Executor bilgilerini ekle
         echo '{
           "name": "GitHub Actions",
           "type": "github",
-          "reportName": "AliExpress Test Raporu",
+          "reportName": "AliExpress Test Raporu - '$BRANCH_NAME'",
           "buildName": "Build #${{ github.run_number }}",
           "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
+          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/'$BRANCH_NAME'",
           "buildOrder": "${{ github.run_number }}",
           "timestamp": "'$(date +%s%3N)'"
         }' > target/allure-results/executor.json
@@ -177,12 +184,51 @@ jobs:
           "Build": "#${{ github.run_number }}"
         }' > target/allure-results/environment.properties
         
-        # Raporu oluştur
-        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
+        # Raporu branch klasörüne oluştur
+        allure generate ${ALLURE_RESULTS_DIR} --clean -o $REPORT_DIR
+        
+        # Branch listesi için index.html oluştur
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <title>AliExpress Test Raporları</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              h1 { color: #333; }
+              .branch-list { list-style: none; padding: 0; }
+              .branch-list li { margin: 10px 0; }
+              .branch-list a { 
+                color: #0366d6; 
+                text-decoration: none;
+                padding: 10px;
+                border: 1px solid #e1e4e8;
+                border-radius: 6px;
+                display: inline-block;
+              }
+              .branch-list a:hover { background-color: #f6f8fa; }
+              .timestamp { color: #666; font-size: 0.9em; margin-left: 10px; }
+            </style>
+          </head>
+          <body>
+            <h1>🚀 AliExpress Test Raporları</h1>
+            <ul class="branch-list">' > target/site/allure-maven-plugin/index.html
+          
+          # Her branch için link ekle
+          for branch in target/site/allure-maven-plugin/*/; do
+            branch_name=$(basename "$branch")
+            if [ "$branch_name" != "index.html" ]; then
+              timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+              echo "<li><a href=\"$branch_name\">📊 $branch_name Raporu</a> <span class=\"timestamp\">$timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
+            fi
+          done
+          
+          echo '</ul></body></html>' >> target/site/allure-maven-plugin/index.html
+        fi
         
         echo "Allure raporu oluşturuldu:"
-        ls -la target/site/allure-maven-plugin/
-    
+        ls -la $REPORT_DIR/
+
     - name: 📦 Test Sonuçlarını Yükle
       if: always()
       uses: actions/upload-artifact@v4
@@ -194,7 +240,7 @@ jobs:
 
   report:
     name: 📊 Rapor Oluşturma
-    needs: [setup, test]
+    needs: test
     runs-on: ubuntu-latest
     if: always()
     
@@ -206,7 +252,18 @@ jobs:
       with:
         name: test-results
         path: target
-    
+
+    - name: 📝 Rapor Linkini Ekle
+      run: |
+        BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+        echo "### 📊 Allure Test Raporu" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "🌐 [Tüm Test Raporları](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 [Branch Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_NAME)" >> $GITHUB_STEP_SUMMARY
+        fi
+
     - name: 📊 Allure Kurulumu
       run: |
         curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
