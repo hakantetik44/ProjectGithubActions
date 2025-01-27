@@ -286,75 +286,12 @@ jobs:
           ]
         }
         EOL
-        
-        # Ana sayfa oluştur
-        cat > target/pages/index.html << 'EOL'
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>AliExpress Test Reports</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { font-family: system-ui; margin: 0; padding: 20px; background: #f6f8fa; }
-                .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                h1 { color: #24292e; border-bottom: 2px solid #e1e4e8; padding-bottom: 10px; }
-                .branch-card { background: #fff; border: 1px solid #e1e4e8; border-radius: 6px; margin: 10px 0; padding: 15px; }
-                .branch-card:hover { box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
-                .branch-name { font-size: 1.2em; font-weight: 600; color: #0366d6; }
-                .branch-meta { margin-top: 10px; color: #586069; }
-                .branch-links { margin-top: 15px; }
-                .branch-links a { display: inline-block; padding: 5px 12px; margin-right: 10px; background: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; color: #0366d6; text-decoration: none; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🧪 AliExpress Test Reports</h1>
-                <div id="branchList">Loading branches...</div>
-                
-                <script>
-                    async function loadBranches() {
-                        try {
-                            const response = await fetch('branches/branch-info.json');
-                            const data = await response.json();
-                            
-                            const branchListHtml = data.branches.map(branch => `
-                                <div class="branch-card">
-                                    <div class="branch-name">🌿 ${branch.name}</div>
-                                    <div class="branch-meta">
-                                        👤 ${branch.author} | 📅 ${branch.lastUpdated}
-                                    </div>
-                                    <div class="branch-links">
-                                        <a href="branches/${branch.name}/index.html">📊 View Report</a>
-                                        <a href="branches/${branch.name}/videos/test-recording.mp4">🎥 View Recording</a>
-                                    </div>
-                                </div>
-                            `).join('');
-                            
-                            document.getElementById('branchList').innerHTML = branchListHtml;
-                        } catch (error) {
-                            document.getElementById('branchList').innerHTML = 'Error loading branch information.';
-                        }
-                    }
-                    loadBranches();
-                </script>
-            </div>
-        </body>
-        </html>
-        EOL
-        
-        # Branch dizini için index.html oluştur
-        cat > "target/pages/branches/$SAFE_BRANCH_NAME/index.html" << EOL
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta http-equiv="refresh" content="0;url=data/index.html">
-        </head>
-        </html>
-        EOL
     
     - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        static_site_generator: allure
     
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
@@ -371,15 +308,19 @@ jobs:
     permissions:
       pages: write
       id-token: write
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      deployments: write
+      actions: write
+      security-events: write
+      contents: write
+      issues: write
+      pull-requests: write
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     name: 📢 Bildirim Gönderme

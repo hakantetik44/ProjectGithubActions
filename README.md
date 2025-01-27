@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Java](https://img.shields.io/badge/Java-11-orange.svg?style=for-the-badge&logo=java)](https://www.oracle.com/java/)
+[![Java](https://img.shields.io/badge/Java-21-orange.svg?style=for-the-badge&logo=java)](https://www.oracle.com/java/)
 [![Selenium](https://img.shields.io/badge/Selenium-4.16.1-green.svg?style=for-the-badge&logo=selenium)](https://www.selenium.dev/)
 [![TestNG](https://img.shields.io/badge/TestNG-7.8.0-orange.svg?style=for-the-badge&logo=testng)](https://testng.org/)
 [![Maven](https://img.shields.io/badge/Maven-3.8.1-red.svg?style=for-the-badge&logo=apache-maven)](https://maven.apache.org/)
