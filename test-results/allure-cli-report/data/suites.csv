@@ -1,0 +1,2 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Mon Jan 27 09:13:50 UTC 2025","Mon Jan 27 09:14:47 UTC 2025","57177","Surefire suite","Surefire test","tests.AliExpressTest","tests.AliExpressTest","testSearchProduct","testSearchProduct","Ürün arama testi"

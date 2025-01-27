@@ -1,0 +1,7 @@
+Could not start a new session. Possible causes are invalid address of the remote server or browser start-up failure. 
+Host info: host: 'MacBookPro.lan', ip: '2001:861:204a:b9a0:20c9:1ace:234e:23ea%en0'
+Build info: version: '4.16.1', revision: '9b4c83354e'
+System info: os.name: 'Mac OS X', os.arch: 'x86_64', os.version: '15.2', java.version: '17.0.13'
+Driver info: org.openqa.selenium.remote.RemoteWebDriver
+Command: [null, newSession {capabilities=[Capabilities {acceptInsecureCerts: true, browserName: chrome, goog:chromeOptions: {args: [--headless, --no-sandbox, --disable-dev-shm-usage, --disable-gpu, --window-size=1920,1080, --remote-allow-origins=*], extensions: []}}]}]
+Capabilities {acceptInsecureCerts: true, browserName: chrome, goog:chromeOptions: {args: [--headless, --no-sandbox, --disable-dev-shm-usage, --disable-gpu, --window-size=1920,1080, --remote-allow-origins=*], extensions: []}}
