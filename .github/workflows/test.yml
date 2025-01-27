@@ -267,12 +267,11 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/feature/video-recording-new'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
-    # Specific permissions for this job
     permissions:
       pages: write
       id-token: write
@@ -313,12 +312,11 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/feature/video-recording-new'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
-    # Specific permissions for this job
     permissions:
       pages: write
       id-token: write
@@ -362,9 +360,14 @@ jobs:
           echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-          echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
-          echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" || "${{ github.ref }}" == "refs/heads/feature/video-recording-new" ]]; then
+          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+            echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
+            echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+          fi
         else
-          echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+          echo "## ℹ️ Rapor Durumu" >> $GITHUB_STEP_SUMMARY
+          echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
         fi 
