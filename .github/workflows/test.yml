@@ -267,7 +267,7 @@ jobs:
     name: 🌐 GitHub Pages
     needs: report
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' && always()
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -313,7 +313,7 @@ jobs:
     name: 🚀 Rapor Yayınlama
     needs: pages
     runs-on: ubuntu-latest
-    if: always()
+    if: github.ref == 'refs/heads/main' && always()
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
