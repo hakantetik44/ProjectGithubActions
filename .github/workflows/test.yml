@@ -33,16 +33,12 @@ env:
   TIMESTAMP: ${{ format('YYYY-MM-DD HH:mm:ss', github.event.head_commit.timestamp) }}
 
 jobs:
-  setup:
-    name: 🛠️ Ortam Hazırlığı
+  test:
+    name: 🧪 Test ve Raporlama
     runs-on: ubuntu-latest
-    outputs:
-      chrome-version: ${{ steps.chrome-version.outputs.version }}
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
     - name: ☕ Set up JDK 21
       uses: actions/setup-java@v4
@@ -65,43 +61,6 @@ jobs:
         Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
         echo "DISPLAY=:99" >> $GITHUB_ENV
     
-    - name: 🌐 Chrome Kurulumu
-      uses: browser-actions/setup-chrome@latest
-      with:
-        chrome-version: stable
-    
-    - name: 🚗 ChromeDriver Kurulumu
-      uses: nanasess/setup-chromedriver@master
-    
-    - name: ℹ️ Chrome Versiyonu Kontrolü
-      id: chrome-version
-      run: |
-        version=$(google-chrome --version | cut -d ' ' -f 3)
-        echo "version=$version" >> $GITHUB_OUTPUT
-        echo "Chrome Version: $version"
-        chromedriver --version
-
-  test:
-    name: 🧪 Test Çalıştırma
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: ☕ Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
-    
-    - name: 🖥️ Setup Display
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y xvfb
-        Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
-        echo "DISPLAY=:99" >> $GITHUB_ENV
-    
     - name: 🎥 Setup Video Recording
       run: |
         sudo apt-get install -y ffmpeg
@@ -110,15 +69,15 @@ jobs:
         echo $! > /tmp/ffmpeg.pid
         sleep 3
     
+    - name: 🌐 Chrome Setup
+      uses: browser-actions/setup-chrome@latest
+    
+    - name: 🚗 ChromeDriver Setup
+      uses: nanasess/setup-chromedriver@master
+    
     - name: 🧪 Run Tests
-      run: |
-        mvn clean test -Dmaven.test.failure.ignore=true -Dallure.results.directory=target/allure-results
-        
-    - name: 📊 Generate Allure Report
-      if: always()
-      run: |
-        mvn allure:report
-        
+      run: mvn clean test -Dmaven.test.failure.ignore=true
+    
     - name: 🛑 Stop Video Recording
       if: always()
       run: |
@@ -127,16 +86,50 @@ jobs:
           kill -INT $pid || true
           sleep 5
         fi
+    
+    - name: 📊 Generate Allure Report
+      if: always()
+      run: |
+        # Download and install Allure CLI
+        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
         
+        # Generate report using both Maven and CLI
+        mvn allure:report
+        allure generate target/allure-results -o target/allure-report --clean
+        
+        # Debug: Show report contents
+        echo "Maven Allure Report:"
+        ls -la target/site/allure-maven-plugin/
+        echo "CLI Allure Report:"
+        ls -la target/allure-report/
+    
     - name: 📦 Package Test Results
       if: always()
       run: |
         mkdir -p target/test-results
+        
+        # Copy Allure reports
+        if [ -d "target/site/allure-maven-plugin" ]; then
+          cp -r target/site/allure-maven-plugin target/test-results/allure-report
+          echo "✓ Maven Allure report copied"
+        fi
+        
+        if [ -d "target/allure-report" ]; then
+          cp -r target/allure-report/* target/test-results/allure-report/
+          echo "✓ CLI Allure report merged"
+        fi
+        
+        # Copy other test artifacts
         cp -r target/allure-results target/test-results/ || true
-        cp -r target/site/allure-maven-plugin target/test-results/allure-report || true
         cp -r target/surefire-reports target/test-results/ || true
         cp -r target/videos target/test-results/ || true
         
+        # Debug: Show final structure
+        echo "Final test results structure:"
+        ls -R target/test-results/
+    
     - name: 📤 Upload Test Results
       if: always()
       uses: actions/upload-artifact@v4
@@ -154,12 +147,6 @@ jobs:
     permissions:
       pages: write
       id-token: write
-      deployments: write
-      actions: write
-      security-events: write
-      contents: write
-      issues: write
-      pull-requests: write
     
     steps:
     - uses: actions/checkout@v4
@@ -172,105 +159,22 @@ jobs:
     
     - name: 📂 Prepare Pages Directory
       run: |
-        # Debug: Show downloaded contents
-        echo "Test results directory contents:"
-        ls -la target/test-results/
-        
-        # Ana dizini oluştur
         mkdir -p target/pages
-        
-        # Branch adını al ve temizle
-        BRANCH_NAME="${{ env.BRANCH_NAME }}"
-        SAFE_BRANCH_NAME=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g')
-        
-        # Branch dizinini oluştur
+        SAFE_BRANCH_NAME=$(echo "${{ env.BRANCH_NAME }}" | sed 's/[^a-zA-Z0-9]/-/g')
         mkdir -p "target/pages/branches/$SAFE_BRANCH_NAME"
         
-        # Allure raporunu kopyala
         if [ -d "target/test-results/allure-report" ]; then
           cp -r target/test-results/allure-report/* "target/pages/branches/$SAFE_BRANCH_NAME/"
           echo "✓ Allure report copied"
-        else
-          echo "⚠️ No Allure report found in test results"
-          ls -R target/test-results/
         fi
         
-        # Video ve ekran görüntülerini kopyala
         if [ -d "target/test-results/videos" ]; then
           cp -r target/test-results/videos "target/pages/branches/$SAFE_BRANCH_NAME/"
           echo "✓ Videos copied"
         fi
-        
-        # Ana sayfa oluştur
-        cat > target/pages/index.html << 'EOL'
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>AliExpress Test Reports</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { font-family: system-ui; margin: 0; padding: 20px; background: #f6f8fa; }
-                .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                h1 { color: #24292e; border-bottom: 2px solid #e1e4e8; padding-bottom: 10px; }
-                .branch-card { background: #fff; border: 1px solid #e1e4e8; border-radius: 6px; margin: 10px 0; padding: 15px; }
-                .branch-card:hover { box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
-                .branch-name { font-size: 1.2em; font-weight: 600; color: #0366d6; }
-                .branch-meta { margin-top: 10px; color: #586069; }
-                .branch-links { margin-top: 15px; }
-                .branch-links a { display: inline-block; padding: 5px 12px; margin-right: 10px; background: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; color: #0366d6; text-decoration: none; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🧪 AliExpress Test Reports</h1>
-                <div id="branchList">Loading branches...</div>
-            </div>
-            
-            <script>
-                const branchName = "$SAFE_BRANCH_NAME";
-                const reportUrl = "${{ env.DEPLOY_URL }}/branches/" + branchName;
-                const branchData = {
-                    name: branchName,
-                    lastUpdated: new Date().toLocaleString(),
-                    reportUrl: reportUrl + "/index.html",
-                    videoUrl: reportUrl + "/videos/test-recording.mp4"
-                };
-                
-                const branchHtml = `
-                    <div class="branch-card">
-                        <div class="branch-name">🌿 ${branchData.name}</div>
-                        <div class="branch-meta">
-                            📅 ${branchData.lastUpdated}
-                        </div>
-                        <div class="branch-links">
-                            <a href="${branchData.reportUrl}">📊 View Report</a>
-                            <a href="${branchData.videoUrl}">🎥 View Recording</a>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('branchList').innerHTML = branchHtml;
-            </script>
-        </body>
-        </html>
-        EOL
-        
-        # Branch dizini için index.html oluştur
-        cat > "target/pages/branches/$SAFE_BRANCH_NAME/index.html" << EOL
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta http-equiv="refresh" content="0;url=data/index.html">
-        </head>
-        </html>
-        EOL
     
     - name: 🔧 Configure Pages
       uses: actions/configure-pages@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        static_site_generator: allure
     
     - name: 📤 Upload Pages Artifact
       uses: actions/upload-pages-artifact@v3
@@ -287,19 +191,11 @@ jobs:
     permissions:
       pages: write
       id-token: write
-      deployments: write
-      actions: write
-      security-events: write
-      contents: write
-      issues: write
-      pull-requests: write
     
     steps:
     - name: 🌐 Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     name: 📢 Bildirim Gönderme
@@ -308,7 +204,7 @@ jobs:
     if: always()
     
     steps:
-    - name: 📋 Durum Kontrolü
+    - name: 📋 Create Summary
       run: |
         if [[ "${{ needs.test.result }}" == "success" ]]; then
           echo "## ✅ Testler Başarıyla Tamamlandı" >> $GITHUB_STEP_SUMMARY
