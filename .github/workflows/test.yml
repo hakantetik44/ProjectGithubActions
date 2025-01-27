@@ -291,17 +291,29 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      contents: write
+      deployments: write
     
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
+    - name: 🔄 Checkout Repository
+      uses: actions/checkout@v4
+    
     - name: 📥 Test Raporlarını İndir
       uses: actions/download-artifact@v4
       with:
         name: allure-report
         path: allure-report
+    
+    - name: 📂 List Files
+      run: |
+        echo "Current directory contents:"
+        ls -la
+        echo "Target directory contents:"
+        ls -la allure-report || echo "Target directory not found"
     
     - name: 🔧 Setup Pages
       uses: actions/configure-pages@v4
@@ -315,9 +327,39 @@ jobs:
       id: deployment
       uses: actions/deploy-pages@v4
 
+  deploy:
+    name: 🚀 Rapor Yayınlama
+    needs: pages
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && always()
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    permissions:
+      pages: write
+      id-token: write
+      deployments: write
+      statuses: write
+    
+    steps:
+    - name: ✅ Verify Deployment
+      if: success()
+      run: |
+        echo "Deployment successful!"
+        echo "Report URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+        
+    - name: ❌ Deployment Status
+      if: failure()
+      run: |
+        echo "Deployment failed!"
+        echo "Error details:"
+        echo "- Job status: ${{ job.status }}"
+        echo "- Previous job status: ${{ needs.pages.result }}"
+
   notify:
     name: 📢 Bildirim Gönderme
-    needs: [test, pages]
+    needs: [test, deploy]
     runs-on: ubuntu-latest
     if: always()
     
@@ -330,7 +372,7 @@ jobs:
           echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [[ "${{ needs.pages.result }}" == "success" ]]; then
+        if [[ "${{ needs.deploy.result }}" == "success" ]]; then
           echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
           echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
         else
