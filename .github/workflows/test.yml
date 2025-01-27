@@ -217,7 +217,7 @@ jobs:
 
   report:
     name: 📊 Rapor Oluşturma
-    needs: [setup, test]
+    needs: test
     runs-on: ubuntu-latest
     if: always()
     
@@ -227,8 +227,8 @@ jobs:
     - name: 📥 Test Sonuçlarını İndir
       uses: actions/download-artifact@v4
       with:
-        name: test-results
-        path: target
+        name: allure-report
+        path: allure-report
     
     - name: 📊 Allure Kurulumu
       run: |
@@ -239,16 +239,15 @@ jobs:
     
     - name: 📈 Allure Raporu Oluştur
       run: |
-        allure generate target/allure-results --clean -o target/site/allure-maven-plugin
+        allure generate allure-report --clean -o allure-history
         echo "Allure raporu oluşturuldu:"
-        ls -la target/site/allure-maven-plugin/
+        ls -la allure-history/
     
     - name: 📜 Test Raporlarını Yükle
       uses: actions/upload-artifact@v4
       with:
-        name: test-reports
-        path: |
-          target/site/allure-maven-plugin/
+        name: allure-history
+        path: allure-history
         retention-days: 30
     
     - name: 📝 Test Özeti
@@ -266,9 +265,9 @@ jobs:
         echo "### 📊 Test İstatistikleri" >> $GITHUB_STEP_SUMMARY
         echo "| Durum | Sayı |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
-        echo "| ✅ Başarılı | $(grep -c "status='PASS'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
-        echo "| ❌ Başarısız | $(grep -c "status='FAIL'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
-        echo "| ⏭️ Atlanan | $(grep -c "status='SKIP'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ✅ Başarılı | $(find allure-history -type f -name "*.json" -exec grep -l '"status":"passed"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ❌ Başarısız | $(find allure-history -type f -name "*.json" -exec grep -l '"status":"failed"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ⏭️ Atlanan | $(find allure-history -type f -name "*.json" -exec grep -l '"status":"skipped"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🔍 Test Ortamı" >> $GITHUB_STEP_SUMMARY
         echo "| Bileşen | Versiyon |" >> $GITHUB_STEP_SUMMARY
@@ -279,12 +278,10 @@ jobs:
         echo "| 🧪 Test Framework | TestNG |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Allure Raporu" >> $GITHUB_STEP_SUMMARY
-        echo "📱 [Detaylı Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔗 Bağlantılar" >> $GITHUB_STEP_SUMMARY
-        echo "- 🏗️ [Build Detayları](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-        echo "- 📊 [Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        echo "- 📝 [Commit Detayları](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+        echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "🌐 [GitHub Pages Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        fi
 
   pages:
     name: 🌐 GitHub Pages
