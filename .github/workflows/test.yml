@@ -396,7 +396,7 @@ jobs:
 
   notify:
     name: 📢 Bildirim Gönderme
-    needs: [test, deploy]
+    needs: [test, report]
     runs-on: ubuntu-latest
     if: always()
     
@@ -409,14 +409,16 @@ jobs:
           echo "## ❌ Test Hatası Tespit Edildi" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
-            echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
-            echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
-          fi
-        else
-          echo "## ℹ️ Rapor Durumu" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ needs.report.result }}" == "success" ]]; then
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          echo "## 🌐 Rapor Durumu" >> $GITHUB_STEP_SUMMARY
           echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "📊 [Ana Sayfa - Tüm Raporlar](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "📊 [Branch Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_NAME)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "## ⚠️ Rapor Oluşturma Hatası" >> $GITHUB_STEP_SUMMARY
         fi 
