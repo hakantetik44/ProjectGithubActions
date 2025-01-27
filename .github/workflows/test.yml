@@ -353,7 +353,7 @@ jobs:
 
   notify:
     name: 📢 Bildirim Gönderme
-    needs: [test]
+    needs: [test, pages, deploy]
     if: always()
     runs-on: ubuntu-latest
     
@@ -367,11 +367,17 @@ jobs:
         fi
         
         if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          if [[ "${{ needs.deploy.result }}" == "success" ]]; then
+          if [[ "${{ needs.pages.result }}" == "success" && "${{ needs.deploy.result }}" == "success" ]]; then
             echo "## 🌐 Rapor Başarıyla Yayınlandı" >> $GITHUB_STEP_SUMMARY
             echo "📊 [Allure Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ⚠️ Rapor Yayınlama Hatası" >> $GITHUB_STEP_SUMMARY
+            if [[ "${{ needs.pages.result }}" != "success" ]]; then
+              echo "- Pages job'u başarısız oldu" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [[ "${{ needs.deploy.result }}" != "success" ]]; then
+              echo "- Deploy job'u başarısız oldu" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
         else
           echo "## ℹ️ Rapor Durumu" >> $GITHUB_STEP_SUMMARY
