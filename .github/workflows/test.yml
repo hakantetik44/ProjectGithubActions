@@ -2,9 +2,11 @@ name: AliExpress Test Automation
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - '**'  # Runs on all branches
   pull_request:
-    branches: [ main, master ]
+    branches:
+      - '**'  # Runs on pull requests from all branches
   schedule:
     - cron: '0 0 * * *'  # Her gece yarısı çalışır
 
