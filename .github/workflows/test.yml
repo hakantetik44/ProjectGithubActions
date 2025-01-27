@@ -252,18 +252,7 @@ jobs:
       with:
         name: test-results
         path: target
-
-    - name: 📝 Rapor Linkini Ekle
-      run: |
-        BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
-        echo "### 📊 Allure Test Raporu" >> $GITHUB_STEP_SUMMARY
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "🌐 [Tüm Test Raporları](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "📥 [Test Raporunu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
-          echo "🌐 [Branch Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_NAME)" >> $GITHUB_STEP_SUMMARY
-        fi
-
+    
     - name: 📊 Allure Kurulumu
       run: |
         curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
@@ -273,20 +262,70 @@ jobs:
     
     - name: 📈 Allure Raporu Oluştur
       run: |
-        allure generate target/allure-results --clean -o target/site/allure-maven-plugin
+        BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+        REPORT_DIR="target/site/allure-maven-plugin/$BRANCH_NAME"
+        
+        # Branch için klasör oluştur
+        mkdir -p $REPORT_DIR
+        
+        # Raporu oluştur
+        allure generate target/allure-results --clean -o $REPORT_DIR
+        
+        # Ana dizini oluştur
+        mkdir -p target/site/allure-maven-plugin
+        
+        # Branch listesi için index.html oluştur
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <title>AliExpress Test Raporları</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; }
+              h1 { color: #333; }
+              .branch-list { list-style: none; padding: 0; }
+              .branch-list li { margin: 10px 0; }
+              .branch-list a { 
+                color: #0366d6; 
+                text-decoration: none;
+                padding: 10px;
+                border: 1px solid #e1e4e8;
+                border-radius: 6px;
+                display: inline-block;
+              }
+              .branch-list a:hover { background-color: #f6f8fa; }
+              .timestamp { color: #666; font-size: 0.9em; margin-left: 10px; }
+            </style>
+          </head>
+          <body>
+            <h1>🚀 AliExpress Test Raporları</h1>
+            <ul class="branch-list">' > target/site/allure-maven-plugin/index.html
+          
+          # Her branch için link ekle
+          for branch in target/site/allure-maven-plugin/*/; do
+            branch_name=$(basename "$branch")
+            if [ "$branch_name" != "index.html" ]; then
+              timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+              echo "<li><a href=\"$branch_name\">📊 $branch_name Raporu</a> <span class=\"timestamp\">$timestamp</span></li>" >> target/site/allure-maven-plugin/index.html
+            fi
+          done
+          
+          echo '</ul></body></html>' >> target/site/allure-maven-plugin/index.html
+        fi
+        
         echo "Allure raporu oluşturuldu:"
-        ls -la target/site/allure-maven-plugin/
+        ls -la $REPORT_DIR/
     
     - name: 📜 Test Raporlarını Yükle
       uses: actions/upload-artifact@v4
       with:
         name: test-reports
-        path: |
-          target/site/allure-maven-plugin/
+        path: target/site/allure-maven-plugin
         retention-days: 30
     
     - name: 📝 Test Özeti
       run: |
+        BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
         echo "# 🚀 Test Çalıştırma Raporu" >> $GITHUB_STEP_SUMMARY
         echo "## 📊 Test Sonuçları" >> $GITHUB_STEP_SUMMARY
         echo "| Metrik | Değer |" >> $GITHUB_STEP_SUMMARY
@@ -300,9 +339,9 @@ jobs:
         echo "### 📊 Test İstatistikleri" >> $GITHUB_STEP_SUMMARY
         echo "| Durum | Sayı |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
-        echo "| ✅ Başarılı | $(grep -c "status='PASS'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
-        echo "| ❌ Başarısız | $(grep -c "status='FAIL'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
-        echo "| ⏭️ Atlanan | $(grep -c "status='SKIP'" target/surefire-reports/testng-results.xml || echo 0) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ✅ Başarılı | $(find target/allure-results -type f -name "*.json" -exec grep -l '"status":"passed"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ❌ Başarısız | $(find target/allure-results -type f -name "*.json" -exec grep -l '"status":"failed"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
+        echo "| ⏭️ Atlanan | $(find target/allure-results -type f -name "*.json" -exec grep -l '"status":"skipped"' {} \; | wc -l) |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🔍 Test Ortamı" >> $GITHUB_STEP_SUMMARY
         echo "| Bileşen | Versiyon |" >> $GITHUB_STEP_SUMMARY
@@ -313,12 +352,10 @@ jobs:
         echo "| 🧪 Test Framework | TestNG |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📊 Allure Raporu" >> $GITHUB_STEP_SUMMARY
-        echo "📱 [Detaylı Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔗 Bağlantılar" >> $GITHUB_STEP_SUMMARY
-        echo "- 🏗️ [Build Detayları](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-        echo "- 📊 [Test Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
-        echo "- 📝 [Commit Detayları](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "📱 [Ana Sayfa - Tüm Raporlar](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "📊 [Branch Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_NAME)" >> $GITHUB_STEP_SUMMARY
 
   pages:
     name: 🌐 GitHub Pages
