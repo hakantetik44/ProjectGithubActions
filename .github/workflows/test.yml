@@ -144,57 +144,14 @@ jobs:
         echo "Test bitiş zamanı: $(date '+%Y-%m-%d %H:%M:%S')"
       continue-on-error: true
 
-    - name: 📈 Allure Raporu Oluştur
-      if: always()
-      run: |
-        # Executor bilgilerini ekle
-        echo '{
-          "name": "GitHub Actions",
-          "type": "github",
-          "reportName": "AliExpress Test Raporu",
-          "buildName": "Build #${{ github.run_number }}",
-          "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
-          "buildOrder": "${{ github.run_number }}",
-          "timestamp": "'$(date +%s%3N)'"
-        }' > target/allure-results/executor.json
-        
-        # Ortam bilgilerini ekle
-        echo '{
-          "name": "test",
-          "values": [
-            { "name": "OS", "value": "Ubuntu-latest" },
-            { "name": "Browser", "value": "Chrome ${{ needs.setup.outputs.chrome-version }}" },
-            { "name": "Java", "value": "21" },
-            { "name": "Branch", "value": "${{ github.ref_name }}" },
-            { "name": "Commit", "value": "${{ github.sha }}" }
-          ]
-        }' > target/allure-results/categories.json
-        
-        # Environment bilgilerini ekle
-        echo '{
-          "Browser": "Chrome ${{ needs.setup.outputs.chrome-version }}",
-          "Browser.Version": "${{ needs.setup.outputs.chrome-version }}",
-          "Java.Version": "21",
-          "OS": "Ubuntu-latest",
-          "Branch": "${{ github.ref_name }}",
-          "Commit": "${{ github.sha }}",
-          "Test Runner": "TestNG",
-          "Build": "#${{ github.run_number }}"
-        }' > target/allure-results/environment.properties
-        
-        # Raporu oluştur
-        allure generate ${ALLURE_RESULTS_DIR} --clean -o target/site/allure-maven-plugin
-        
-        echo "Allure raporu oluşturuldu:"
-        ls -la target/site/allure-maven-plugin/
-    
     - name: 📊 Allure Raporu Yayınla
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: allure-report
-        path: target/site/allure-maven-plugin
+        path: |
+          target/site/allure-maven-plugin
+          target/allure-results
         retention-days: 30
 
     - name: 📝 Rapor Linkini Ekle
@@ -205,15 +162,6 @@ jobs:
         if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
           echo "🌐 [GitHub Pages Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
         fi
-    
-    - name: 📦 Test Sonuçlarını Yükle
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          target/
-        retention-days: 30
 
   report:
     name: 📊 Rapor Oluşturma
@@ -239,7 +187,43 @@ jobs:
     
     - name: 📈 Allure Raporu Oluştur
       run: |
-        allure generate allure-report --clean -o allure-history
+        # Executor bilgilerini ekle
+        echo '{
+          "name": "GitHub Actions",
+          "type": "github",
+          "reportName": "AliExpress Test Raporu",
+          "buildName": "Build #${{ github.run_number }}",
+          "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+          "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}",
+          "buildOrder": "${{ github.run_number }}",
+          "timestamp": "'$(date +%s%3N)'"
+        }' > allure-report/allure-results/executor.json
+        
+        # Ortam bilgilerini ekle
+        echo '{
+          "name": "test",
+          "values": [
+            { "name": "OS", "value": "Ubuntu-latest" },
+            { "name": "Browser", "value": "Chrome" },
+            { "name": "Java", "value": "21" },
+            { "name": "Branch", "value": "${{ github.ref_name }}" },
+            { "name": "Commit", "value": "${{ github.sha }}" }
+          ]
+        }' > allure-report/allure-results/categories.json
+        
+        # Environment bilgilerini ekle
+        echo '{
+          "Browser": "Chrome",
+          "Java.Version": "21",
+          "OS": "Ubuntu-latest",
+          "Branch": "${{ github.ref_name }}",
+          "Commit": "${{ github.sha }}",
+          "Test Runner": "TestNG",
+          "Build": "#${{ github.run_number }}"
+        }' > allure-report/allure-results/environment.properties
+        
+        # Raporu oluştur
+        allure generate allure-report/allure-results --clean -o allure-history
         echo "Allure raporu oluşturuldu:"
         ls -la allure-history/
     
