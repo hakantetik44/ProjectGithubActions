@@ -70,6 +70,13 @@ jobs:
     - name: 🚗 ChromeDriver Kurulumu
       uses: nanasess/setup-chromedriver@master
     
+    - name: 📊 Allure Kurulumu
+      run: |
+        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
+        allure --version
+    
     - name: ℹ️ Chrome Versiyonu Kontrolü
       id: chrome-version
       run: |
@@ -108,6 +115,13 @@ jobs:
     
     - name: 🚗 ChromeDriver Kurulumu
       uses: nanasess/setup-chromedriver@master
+    
+    - name: 📊 Allure Kurulumu
+      run: |
+        curl -o allure-2.24.0.tgz -OL https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
+        sudo tar -zxvf allure-2.24.0.tgz -C /opt/
+        sudo ln -s /opt/allure-2.24.0/bin/allure /usr/bin/allure
+        allure --version
     
     - name: 🚀 Testleri Çalıştır
       env:
