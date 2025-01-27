@@ -27,7 +27,7 @@
 
 ## 🔧 Prerequisites
 
-- Java JDK 11 or higher
+- Java JDK 21 or higher
 - Maven 3.6 or higher
 - Chrome browser
 - Git

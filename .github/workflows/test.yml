@@ -145,84 +145,6 @@ jobs:
         path: target/test-results
         retention-days: 30
 
-  report:
-    name: Deploy Report
-    needs: test
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: 📥 Download Test Results
-      uses: actions/download-artifact@v4
-      with:
-        name: test-results
-        path: target/test-results
-        
-    - name: 📋 Create Branch Directory
-      run: |
-        BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        BRANCH_DIR="branches/$BRANCH_NAME"
-        
-        # Debug: Artifact içeriğini kontrol et
-        echo "Test results directory contents:"
-        ls -R test-results/
-        
-        # Allure rapor dizinini belirle
-        ALLURE_SOURCE=""
-        if [ -d "test-results/allure-maven-report" ]; then
-          ALLURE_SOURCE="test-results/allure-maven-report"
-        elif [ -d "test-results/allure-cli-report" ]; then
-          ALLURE_SOURCE="test-results/allure-cli-report"
-        fi
-        
-        if [ -z "$ALLURE_SOURCE" ]; then
-          echo "⚠️ No Allure report found in test results"
-          exit 1
-        fi
-        
-        # Branch dizinini oluştur
-        mkdir -p "$BRANCH_DIR"
-        
-        # Allure raporunu kopyala
-        echo "Copying Allure report from $ALLURE_SOURCE to $BRANCH_DIR"
-        cp -r "$ALLURE_SOURCE"/* "$BRANCH_DIR/"
-        
-        # Video ve ekran görüntülerini kopyala
-        if [ -d "test-results/videos" ]; then
-          mkdir -p "$BRANCH_DIR/videos"
-          cp -r test-results/videos/* "$BRANCH_DIR/videos/"
-          echo "✓ Videos copied"
-        fi
-        
-        if [ -d "test-results/screenshots" ]; then
-          mkdir -p "$BRANCH_DIR/screenshots"
-          cp -r test-results/screenshots/* "$BRANCH_DIR/screenshots/"
-          echo "✓ Screenshots copied"
-        fi
-        
-        # Debug: Son dizin yapısını kontrol et
-        echo "Final branch directory structure:"
-        ls -R "$BRANCH_DIR"
-        
-    - name: 🚀 Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: .
-        force_orphan: true
-        
-    - name: 📝 Create Report Summary
-      if: always()
-      run: |
-        echo "### Test Report Summary" >> $GITHUB_STEP_SUMMARY
-        echo "✅ Test results have been deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
-        echo "📊 [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/branches/${GITHUB_REF#refs/heads/}/index.html)" >> $GITHUB_STEP_SUMMARY
-        if [ -f "branches/${GITHUB_REF#refs/heads/}/videos/test-recording.mp4" ]; then
-          echo "🎥 [Download Test Recording](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/branches/${GITHUB_REF#refs/heads/}/videos/test-recording.mp4)" >> $GITHUB_STEP_SUMMARY
-        fi
-
   pages:
     name: 🌐 Deploy Report
     needs: test
@@ -250,6 +172,10 @@ jobs:
     
     - name: 📂 Prepare Pages Directory
       run: |
+        # Debug: Show downloaded contents
+        echo "Test results directory contents:"
+        ls -la target/test-results/
+        
         # Ana dizini oluştur
         mkdir -p target/pages
         
@@ -263,28 +189,81 @@ jobs:
         # Allure raporunu kopyala
         if [ -d "target/test-results/allure-report" ]; then
           cp -r target/test-results/allure-report/* "target/pages/branches/$SAFE_BRANCH_NAME/"
+          echo "✓ Allure report copied"
+        else
+          echo "⚠️ No Allure report found in test results"
+          ls -R target/test-results/
         fi
         
         # Video ve ekran görüntülerini kopyala
         if [ -d "target/test-results/videos" ]; then
           cp -r target/test-results/videos "target/pages/branches/$SAFE_BRANCH_NAME/"
+          echo "✓ Videos copied"
         fi
         
-        # Branch bilgilerini JSON dosyasına kaydet
-        cat > target/pages/branches/branch-info.json << EOL
-        {
-          "lastUpdated": "$(date '+%Y-%m-%d %H:%M:%S')",
-          "currentBranch": "$SAFE_BRANCH_NAME",
-          "branches": [
-            {
-              "name": "$SAFE_BRANCH_NAME",
-              "lastUpdated": "$(date '+%Y-%m-%d %H:%M:%S')",
-              "reportUrl": "${{ env.DEPLOY_URL }}/branches/$SAFE_BRANCH_NAME",
-              "commit": "${{ github.sha }}",
-              "author": "${{ github.actor }}"
-            }
-          ]
-        }
+        # Ana sayfa oluştur
+        cat > target/pages/index.html << 'EOL'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>AliExpress Test Reports</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { font-family: system-ui; margin: 0; padding: 20px; background: #f6f8fa; }
+                .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                h1 { color: #24292e; border-bottom: 2px solid #e1e4e8; padding-bottom: 10px; }
+                .branch-card { background: #fff; border: 1px solid #e1e4e8; border-radius: 6px; margin: 10px 0; padding: 15px; }
+                .branch-card:hover { box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
+                .branch-name { font-size: 1.2em; font-weight: 600; color: #0366d6; }
+                .branch-meta { margin-top: 10px; color: #586069; }
+                .branch-links { margin-top: 15px; }
+                .branch-links a { display: inline-block; padding: 5px 12px; margin-right: 10px; background: #f1f8ff; border: 1px solid #c8e1ff; border-radius: 6px; color: #0366d6; text-decoration: none; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🧪 AliExpress Test Reports</h1>
+                <div id="branchList">Loading branches...</div>
+            </div>
+            
+            <script>
+                const branchName = "$SAFE_BRANCH_NAME";
+                const reportUrl = "${{ env.DEPLOY_URL }}/branches/" + branchName;
+                const branchData = {
+                    name: branchName,
+                    lastUpdated: new Date().toLocaleString(),
+                    reportUrl: reportUrl + "/index.html",
+                    videoUrl: reportUrl + "/videos/test-recording.mp4"
+                };
+                
+                const branchHtml = `
+                    <div class="branch-card">
+                        <div class="branch-name">🌿 ${branchData.name}</div>
+                        <div class="branch-meta">
+                            📅 ${branchData.lastUpdated}
+                        </div>
+                        <div class="branch-links">
+                            <a href="${branchData.reportUrl}">📊 View Report</a>
+                            <a href="${branchData.videoUrl}">🎥 View Recording</a>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('branchList').innerHTML = branchHtml;
+            </script>
+        </body>
+        </html>
+        EOL
+        
+        # Branch dizini için index.html oluştur
+        cat > "target/pages/branches/$SAFE_BRANCH_NAME/index.html" << EOL
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta http-equiv="refresh" content="0;url=data/index.html">
+        </head>
+        </html>
         EOL
     
     - name: 🔧 Configure Pages
