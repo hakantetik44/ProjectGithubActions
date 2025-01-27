@@ -138,6 +138,23 @@ jobs:
         echo "Test bitiş zamanı: $(date '+%Y-%m-%d %H:%M:%S')"
       continue-on-error: true
     
+    - name: 📊 Allure Raporu Yayınla
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: allure-report-${{ github.run_number }}
+        path: target/site/allure-maven-plugin
+        retention-days: 30
+
+    - name: 📝 Rapor Linkini Ekle
+      if: always()
+      run: |
+        echo "### 📊 Allure Test Raporu" >> $GITHUB_STEP_SUMMARY
+        echo "📥 [Allure Raporu İndir](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "🌐 [GitHub Pages Raporu](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+        fi
+    
     - name: 📈 Allure Raporu Oluştur
       if: always()
       run: |
